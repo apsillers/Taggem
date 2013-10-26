@@ -125,6 +125,10 @@ io.sockets.on('connection', function (socket) {
                 mapData[newPos.z][newPos.x][newPos.y] = 0;
                 changeListener.emit("change", [newPos.z], ['map']);
             }
+
+            newPos.blocking = true;
+            if(stepper.onCollide) { stepper.onCollide(newPos); }
+
             // we were blocked not by an entity but by terrain;
             // return an object representing the blocking terrain
             return [newPos];
