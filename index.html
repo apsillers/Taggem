@@ -19,7 +19,7 @@ var lightPasses = function(x, y) {
     } catch(e) { return false; }
 }
 
-var socket = io.connect('http://localhost:8080');
+var socket = io.connect('http://' + location.host);
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, positions); });
 socket.on("pos", function(pos) { redraw({}, pos); });
 socket.on("id", function(myid) {
