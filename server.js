@@ -51,7 +51,7 @@ function generateMapLevel(level) {
             if(ROT.RNG.getUniform() > 0.8) return;
             var doorId = genId();
             entities[doorId] = {
-                id: doorId,
+                id: doorId,p
                 symbol: '+',
                 blocking: false,
                 color: "#FF0",
@@ -141,42 +141,52 @@ io.sockets.on('connection', function (socket) {
             changeListener.emit("change", [newPos.z], ['pos', 'map']);
 
             for(var i=0; i<destEntities.length; ++i) {
-                if(destEntities[i].onCollide) blockingEntity.onCollide(stepper);
+                if(destEntities[i].onCollide) destEntities[i].onCollide(stepper);
+                if(stepper.onCollide) stepper.onCollide(destEntities[i]);
             }
 
             return true;
         }
         
-        var pushableEntity = destEntities.filter(function(e) { return e.pushable; })[0];
+        var pushableEntities = destEntities.filter(function(e) { return e.pushable; });
 
-        if(stepper.canPush && pushableEntity) {
-            // define where the pushable entity would end up
-            var newBlockingPos = {
-                       x: pushableEntity.x + data.x,
-                       y: pushableEntity.y + data.y,
-                       z: pushableEntity.z
-                     };
-                     
-            // does anything block the pushable thing?
-            var doubleBlockingEntities = getEntitiesByLocation(newBlockingPos.z, newBlockingPos.x, newBlockingPos.y, entities);
-            doubleBlockingEntities = doubleBlockingEntities.filter(function(e) { return !!e.blocking });  
+        if(stepper.canPush && pushableEntities.length != 0) {
+            for(var i=0; i<pushableEntities.length; ++i) {
+                pushableEntity = pushableEntities[i];
 
-            // if nothing blocks (including terrain or blocking entities), then move the actor and the pushable thing
-            if(doubleBlockingEntities.length == 0 && mapData[newBlockingPos.z][newBlockingPos.x][newBlockingPos.y] == 0) {
-                stepper.x = newPos.x;
-                stepper.y = newPos.y;
-                stepper.z = newPos.z;
-                
-                pushableEntity.x = newBlockingPos.x;
-                pushableEntity.y = newBlockingPos.y;
-                pushableEntity.z = newBlockingPos.z;
-                
-                changeListener.emit("change", [newPos.z], ['pos']);
-                return true;
+                // define where the pushable entity would end up
+                var newBlockingPos = {
+                           x: pushableEntity.x + data.x,
+                           y: pushableEntity.y + data.y,
+                           z: pushableEntity.z
+                         };
+                         
+                // does anything block the pushable thing?
+                var doubleBlockingEntities = getEntitiesByLocation(newBlockingPos.z, newBlockingPos.x, newBlockingPos.y, entities);
+                doubleBlockingEntities = doubleBlockingEntities.filter(function(e) { return !!e.blocking });  
+
+                // if nothing blocks (including terrain or blocking entities), then move the actor and the pushable thing
+                if(doubleBlockingEntities.length == 0 && mapData[newBlockingPos.z][newBlockingPos.x][newBlockingPos.y] == 0) {
+                    stepper.x = newPos.x;
+                    stepper.y = newPos.y;
+                    stepper.z = newPos.z;
+                    
+                    pushableEntity.x = newBlockingPos.x;
+                    pushableEntity.y = newBlockingPos.y;
+                    pushableEntity.z = newBlockingPos.z;
+                    
+                    changeListener.emit("change", [newPos.z], ['pos']);
+                    return true;
+                }
             }
         }
 
-        return blockingEntities;
+        for(var i=0; i<blockingEntities.length; ++i) {
+            if(stepper.onCollide) { stepper.onCollide(blockingEntities[i]); }
+            if(blockingEntities[i].onCollide) { blockingEntities[i].onCollide(stepper); }
+        }
+
+        return false;
     }
     
     
@@ -193,23 +203,20 @@ io.sockets.on('connection', function (socket) {
             intervalTime: 100,
             act: function() {
                 var stepResult = step(shotId, data);
-                if(stepResult instanceof Array) {
-                    for(var i=0; i<stepResult.length; ++i) {
-                        this.onCollide(stepResult[i]);
-                    }
-                }
-                if(stepResult instanceof Array || stepResult == false) {
-                    var level = entities[shotId].z;
-                    delete entities[shotId];
-                    delete activeEntities[shotId];
-                    changeListener.emit("change", [level], ['pos']);
-                }
             },
             onCollide: function(entity) {
                 if(!entity) return;
-                entity.frozen = true;
-                entity.pushable = true;
-                setTimeout(function() { entity.frozen = false; entity.pushable = false; }, 2000);
+
+                if(entity.blocking) {
+                    var level = entities[shotId].z;
+                    delete entities[shotId];
+                    delete activeEntities[shotId];
+
+                    entity.frozen = true;
+                    entity.pushable = true;
+                    setTimeout(function() { entity.frozen = false; entity.pushable = false; }, 2000);
+                    changeListener.emit("change", [level], ['pos']);
+                }
             }
         };
 
