@@ -215,6 +215,9 @@ io.sockets.on('connection', function (socket) {
 	    onCollide: function(entity) {
 		ensureLevelExists(entity.z + 1);
 		entity.z += 1;
+		var foo = getValidPosition(entity.z);
+		entity.x = foo.x;
+		entity.y = foo.y;
 		this.symbol = "^";
 		changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
 	    }
