@@ -51,7 +51,7 @@ function generateMapLevel(level) {
             if(ROT.RNG.getUniform() > 0.8) return;
             var doorId = genId();
             entities[doorId] = {
-                id: doorId,p
+                id: doorId,
                 symbol: '+',
                 blocking: false,
                 color: "#FF0",
