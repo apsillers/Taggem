@@ -37,6 +37,12 @@ var genId;
 // generate level 1 map
 var mapData = [];
 
+function ensureLevelExists(level) {
+  if (typeof mapData[level] == 'undefined') {
+    generateMapLevel(level);
+  }
+}
+
 function generateMapLevel(level) {
     mapData[level] = [];
     mapGenerator = new ROT.Map.Digger();
