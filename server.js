@@ -81,15 +81,16 @@ generateMapLevel(1);
 
 
 
-var boulderid = genId()
+var boulderid = genId();
+var boulderpos = getValidPosition(1);
 entities[boulderid] = {
         id: boulderid,
         symbol: '0',
         blocking: true,
         pushable: true,
         color: "#FFF",
-        x: 39,//~~(Math.random()*80),
-        y: 14,//~~(Math.random()*30)
+        x: boulderpos.x,
+        y: boulderpos.y,
         z: 1
     };
 
@@ -98,7 +99,7 @@ var changeListener = new EventEmitter();
 io.sockets.on('connection', function (socket) {
 
     var id = genId();
-
+    var newPos = getValidPosition(1);
     entities[id] = {
         id: id,
         symbol: '@',
@@ -106,8 +107,8 @@ io.sockets.on('connection', function (socket) {
         canPush: true,
         canDig: true,
         color: colorFromId(id),
-        x: 40,
-        y: 15,
+        x: newPos.x,
+        y: newPos.y,
         z: 1
     };
 
