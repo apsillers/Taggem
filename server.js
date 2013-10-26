@@ -38,6 +38,7 @@ var genId;
 var mapData = [];
 
 function getValidPosition(level) {
+  ensureLevelExists(level);
   do {
     x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
     y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
