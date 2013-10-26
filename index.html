@@ -1,0 +1,116 @@
+<script src="rot.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+ROT.RNG.setSeed(12345);
+ROT.DEFAULT_WIDTH = 80;
+ROT.DEFAULT_HEIGHT = 32;
+
+var id, level = 1;
+var mapData = [];
+
+var display = new ROT.Display({fontSize:12});
+document.documentElement.appendChild(display.getContainer());
+
+/* input callback */
+var lightPasses = function(x, y) {
+    try { 
+        return (mapData[level][x][y] == 0);
+    } catch(e) { return false; }
+}
+
+var socket = io.connect('http://localhost:8080');
+socket.on("map", function(mapUpdates) { redraw(mapUpdates, positions); });
+socket.on("pos", function(pos) { redraw({}, pos); });
+socket.on("id", function(myid) {
+    id = myid;
+
+    display.clear();
+    
+    // init empty map
+    initMapLevel(1);
+});
+
+function initMapLevel(level) {
+    mapData[level] = [];
+    for(var i=0; i < ROT.DEFAULT_WIDTH; ++i) {
+        for(var j=0; j < ROT.DEFAULT_HEIGHT; ++j) {
+            if(mapData[level][i] == null) { mapData[level][i] = []; }
+            mapData[level][i][j] = -1;
+        }
+    }
+}
+
+function drawFloor(you) {
+    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
+
+    fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
+        var ch = (mapData[you.z][x][y] ? "": ".");
+        var color = (mapData[you.z][x][y] ? "#777": "#000");
+        drawMapChar(x, y, ch, "#fff", color);
+    });
+}
+
+var shotMode = false;
+
+window.addEventListener("keydown", function(e) {
+    var code = e.keyCode;
+    var action = "move";
+
+    if(shotMode) action = "shoot";
+
+    if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0 }); }
+    if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0 }); }
+    if (ROT.VK_K == code) { socket.emit(action, { x:0, y:-1 }); }
+    if (ROT.VK_J == code) { socket.emit(action, { x:0, y:1 }); }
+    
+    if (ROT.VK_Y == code) { socket.emit(action, { x:-1, y:-1 }); }
+    if (ROT.VK_U == code) { socket.emit(action, { x:1, y:-1 }); }
+    if (ROT.VK_B == code) { socket.emit(action, { x:-1, y:1 }); }
+    if (ROT.VK_N == code) { socket.emit(action, { x:1, y:1 }); }
+
+    shotMode = false;
+
+    if (ROT.VK_S == code) { shotMode = true; }
+    
+    if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
+});
+    
+var positions = {};
+function drawMap(mapUpdates) {
+
+    // update map state with new data
+    for(i in mapUpdates) {
+        var coords = i.split(',');
+        mapData[level][coords[0]][coords[1]] = mapUpdates[i];
+    }
+
+    // redraw map
+    for(i=0; i < ROT.DEFAULT_WIDTH; ++i) {
+        for(j=0; j < ROT.DEFAULT_HEIGHT; ++j) {
+            drawMapChar(i, j, mapData[level][i][j]==0?".":" ", "#fff", ["#000", "#777"][mapData[level][i][j]]);
+        }
+    }
+}
+
+function drawThings(posData) {
+    for(var i in posData) {
+        var pos = posData[i];
+        drawMapChar(pos.x, pos.y, pos.symbol, pos.color);
+    }
+}
+
+function redraw(map, posData) {
+    positions = posData;
+
+    drawMap(map);
+
+    if(posData[id]) drawFloor(posData[id]);
+    
+    drawThings(posData);
+}
+
+function drawMapChar(x,y,ch,fg,bg) {
+    display.draw(x, y+2, ch, fg, bg);
+}
+</script>
