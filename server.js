@@ -207,16 +207,31 @@ io.sockets.on('connection', function (socket) {
         return false;
     }
     
+    socket.on("zap", function(data) {
+	var trapID = genId();
+	entities[trapID] = {
+	    id: trapID,
+	    symbol: ".",
+	    color: "#FFF",
+	    x: entities[id].x + (data.x * 4),
+	    y: entities[id].y + (data.y * 4),
+	    z: entities[id].z,
+	    onCollide: function(entity) {
+		entity.z -= -1;
+		this.symbol = "^";
+	    }
+	}
+    });
     
     socket.on("shoot", function(data) {
-        var shotId = genId()
+        var shotId = genId();
         entities[shotId] = activeEntities[shotId] = {
             id: shotId,
             symbol: '*',
             color: "#0FF",
             x: entities[id].x,
             y: entities[id].y,
-            z: 1,
+            z: entities[id].z,
             timeToNext: 100,
             intervalTime: 100,
             act: function() {

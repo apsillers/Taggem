@@ -52,12 +52,13 @@ function drawFloor(you) {
 }
 
 var shotMode = false;
-
+var zapMode = false;
 window.addEventListener("keydown", function(e) {
     var code = e.keyCode;
     var action = "move";
 
-    if(shotMode) action = "shoot";
+    if(shotMode) {action = "shoot"; }
+    if(zapMode) { action = "zap"};
 
     if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0 }); }
     if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0 }); }
@@ -70,9 +71,12 @@ window.addEventListener("keydown", function(e) {
     if (ROT.VK_N == code) { socket.emit(action, { x:1, y:1 }); }
 
     shotMode = false;
+    zapMode = false;
 
+    if(ROT.VK_Z == code) { zapMode = true; }
     if (ROT.VK_S == code) { shotMode = true; }
     
+
     if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
 });
     
