@@ -213,8 +213,10 @@ io.sockets.on('connection', function (socket) {
 	    y: entities[id].y + (data.y * 4),
 	    z: entities[id].z,
 	    onCollide: function(entity) {
-		entity.z -= -1;
+		ensureLevelExists(entity.z + 1);
+		entity.z += 1;
 		this.symbol = "^";
+		changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
 	    }
 	}
     });

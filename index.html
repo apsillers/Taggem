@@ -83,6 +83,8 @@ window.addEventListener("keydown", function(e) {
 var positions = {};
 function drawMap(mapUpdates) {
 
+    if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
+
     // update map state with new data
     for(i in mapUpdates) {
         var coords = i.split(',');
@@ -106,6 +108,10 @@ function drawThings(posData) {
 
 function redraw(map, posData) {
     positions = posData;
+
+    if(positions[id] != undefined) {
+        level = positions[id].z;
+    }
 
     drawMap(map);
 
