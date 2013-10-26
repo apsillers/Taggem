@@ -230,6 +230,32 @@ io.sockets.on('connection', function (socket) {
 	}
     });
     
+    socket.on("mine", function(data) {
+	var myIds = [];
+	var counter = 0;
+	for(var i = -1; i <= 1; i++) {
+	    for(var j = -1; j <= 1; j++) {
+		var mineId = genId();
+		myIds[counter] = mineId;
+		counter = counter += 1;
+		entities[mineId] = {
+		    id : mineId,
+		    symbol = '.',
+		    color: "#FFF",
+		    x: entities[id].x + i,
+		    y: entities[id].y + j,
+		    z: entities[id].z,
+		    onCollide: function(entity) {
+			
+		    }
+		}
+	    }
+	}
+	for(var i = 0; i < 10; i++) {
+	    entities[myIds[i]].next = myIds;
+	}
+    });
+
     socket.on("shoot", function(data) {
         var shotId = genId();
         entities[shotId] = activeEntities[shotId] = {
