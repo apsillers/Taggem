@@ -37,6 +37,14 @@ var genId;
 // generate level 1 map
 var mapData = [];
 
+function getValidPosition(level) {
+  do {
+    x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
+    y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
+  } while (mapData[level][x][y])
+  return {x: x, y: y}
+}
+
 function ensureLevelExists(level) {
   if (typeof mapData[level] == 'undefined') {
     generateMapLevel(level);
