@@ -41,7 +41,7 @@ function getValidPosition(level) {
   do {
     x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
     y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
-  } while (mapData[x][y])
+  } while (mapData[level][x][y])
   return {x: x, y: y}
 }
 
