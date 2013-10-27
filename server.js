@@ -312,17 +312,18 @@ function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
 
+var lightPassesOnLevel = function (level) { return function(x, y) {
+    if(mapData[level][x] != undefined) { return (mapData[level][x][y] == 0); }
+    else { return false; }
+}};
+
 // given a master set of entities and an entity id,
 // return the set of entires visible to the entity with the given id
 function filterEntities(id, inputEntities) {
     var you = inputEntities[id];
     var filteredEntities = {}
 
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
+    var fov = new ROT.FOV.PreciseShadowcasting(lightPassesOnLevel(you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
@@ -353,11 +354,7 @@ function filterMapData(id, inputMapData) {
     var you = entities[id];
     var filteredMapData = {};
     
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
+    var fov = new ROT.FOV.PreciseShadowcasting(lightPassesOnLevel(you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
