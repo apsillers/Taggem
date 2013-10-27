@@ -118,6 +118,7 @@ var utilities = {
 
 }
 
+// import entity constructors
 var construct = require("entity_objects")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData);
 
 // generate level 1 map
@@ -166,7 +167,6 @@ io.sockets.on('connection', function (socket) {
       }
       changeListener.emit("change", [entities[id].z], ['pos', 'map']);
     }
-
 
     socket.on('move', function(data) { entities[id].step(data); });
     
@@ -241,7 +241,7 @@ io.sockets.on('connection', function (socket) {
     // when leaving, remove the player entity and remove his change listener
     socket.on("disconnect", function() {
         var level = entities[id].z;
-        delete entities[id];
+        entities[id].remove();
         changeListener.removeListener("change", onChange);
         changeListener.emit("change", [level], ['pos']);
     });
@@ -253,18 +253,22 @@ function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
 
-var lightPassesOnLevel = function (ents, level) { return function(x, y) {
-    if (mapData[level] == undefined ||
-        mapData[level][x] == undefined || 
-        mapData[level][x][y] != 0) { return false; }
-    here = utilities.getEntitiesByLocation(level, x, y, ents);
-    for (var i = 0; i < here.length; i++) {
-      if (here[i].blocksLight) {
-        return false;
-      }
+
+var lightPassesOnLevel = function (ents, level) {
+    // determines if light can pass through a given (x,y)
+    return function(x, y) {
+        if (mapData[level] == undefined ||
+            mapData[level][x] == undefined || 
+            mapData[level][x][y] != 0) { return false; }
+        here = utilities.getEntitiesByLocation(level, x, y, ents);
+        for (var i = 0; i < here.length; i++) {
+          if (here[i].blocksLight) {
+            return false;
+          }
+        }
+        return true;
     }
-    return true;
-}};
+};
 
 // given a master set of entities and an entity id,
 // return the set of entires visible to the entity with the given id
@@ -287,17 +291,19 @@ function filterEntities(id, inputEntities) {
     
     // psychic players see all players on the level
     if(you.psychic) {
-        for(var i in entities) {
-            var e = entities[i];
+        for(var i in inputEntities) {
+            var e = inputEntities[i];
             if(e.hasBrain && e.z == you.z) { filteredEntities[e.id] = e; }
         }
     }   
 
-    filteredEntities[id] = inputEntities[id];
+    filteredEntities[id] = you;
     
     return filteredEntities;
 }
 
+// return a dictionary with "x,y" keys that have the map values of
+// all maps spaces visible to the player with the given id
 function filterMapData(id, inputMapData) {
     var you = entities[id];
     var filteredMapData = {};
@@ -313,6 +319,7 @@ function filterMapData(id, inputMapData) {
     return filteredMapData;
 }
 
+// make active entities act (shots, monsters, time bombs, etc.)
 var worldPeriod = 100;
 setInterval(function() {
     for(var i in activeEntities) {
