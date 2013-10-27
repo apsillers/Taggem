@@ -64,14 +64,20 @@ function generateMapLevel(level) {
     for(var i=0; i<rooms.length; ++i) {
         rooms[i].getDoors(function(x, y) {
             if(ROT.RNG.getUniform() > 0.8) return;
+            var otherSym = '|';
+            if (x == rooms[i].getLeft() - 1 || 
+                x == rooms[i].getRight() + 1)
+              otherSym = '-';
             var doorId = genId();
             entities[doorId] = {
                 id: doorId,
                 symbol: '+',
-                blocking: false,
+                otherSymbol: otherSym,
+                isOpen: false,
+                blocking: true,
                 color: "#FF0",
-                x: x,//~~(Math.random()*80),
-                y: y,//~~(Math.random()*30)
+                x: x,
+                y: y,
                 z: level
             };
         });
@@ -125,7 +131,26 @@ io.sockets.on('connection', function (socket) {
 
     socket.emit('id', id);
 
-    socket.on('move', function(data) { step(id, data) });
+    socket.on('move', function(data) { step(id, data); });
+
+    socket.on('open', function(data) { setOpen(id, data, true); });
+    socket.on('close', function(data) { setOpen(id, data, false); });
+
+    function setOpen(id, data, doOpen) {
+      you = entities[id];
+      ents = getEntitiesByLocation(you.z, you.x + data.x, you.y + data.y, entities);
+      openables = ents.filter(function (e) { return typeof e.isOpen != 'undefined'; });
+      for (var i = 0; i < openables.length; i++) {
+        if (openables[i].isOpen != doOpen) {
+          var tmp = openables[i].symbol;
+          openables[i].symbol = openables[i].otherSymbol;
+          openables[i].otherSymbol = tmp;
+        }
+        openables[i].isOpen = doOpen;
+        openables[i].blocking = !doOpen;
+      }
+      changeListener.emit("change", [entities[id].z], ['pos']);
+    }
 
     // data: x/y/z object
     // id: entity ID of thing trying to step
