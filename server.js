@@ -339,7 +339,7 @@ io.sockets.on('connection', function (socket) {
                 if(!entity) return;
 
                 if(entity.blocking) {
-                    var level = entities[shotId].z;
+                    var level = this.z;
                     delete entities[shotId];
                     delete activeEntities[shotId];
 
