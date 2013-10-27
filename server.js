@@ -216,6 +216,17 @@ io.sockets.on('connection', function (socket) {
         changeListener.emit("change", [entities[id].z], ["pos"]);
     });
 
+    socket.on("telepathy", function(data) {
+        entities[id].psychic = data.active;
+
+        changeListener.emit("change", [entities[id].z], ["pos"]);
+    });
+
+    socket.on("invisible", function(data) {
+        entities[id].invisible = data.active;
+
+        changeListener.emit("change", [entities[id].z], ["pos"]);
+    });
 
     // this should fire whenever a change happens to the world that may implicate a client redraw
     // this could be limited at least to level-specific activity, or even more localized
@@ -268,12 +279,19 @@ function filterEntities(id, inputEntities) {
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
         items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
         for(var i=0; i<items.length; ++i) {
-            filteredEntities[items[i].id] = items[i];
+            if(!items[i].invisible) {
+                filteredEntities[items[i].id] = items[i];
+            }
         }
     });
     
-    // TODO: add entites known via non-sight (telepathy, etc)
-    
+    if(you.psychic) {
+        for(var i in entities) {
+            var e = entities[i];
+            if(e.hasBrain) { filteredEntities[e.id] = e; }
+        }
+    }   
+
     filteredEntities[id] = inputEntities[id];
     
     return filteredEntities;
