@@ -110,7 +110,17 @@ io.sockets.on('connection', function (socket) {
         color: colorFromId(id),
         x: newPos.x,
         y: newPos.y,
-        z: 1
+        z: 1,
+	health: 10,
+	setHealth: function(healthDelta) {
+	    this.health += healthDelta;
+	    if(this.health <= 0) {
+		var newPlace = getValidPosition(1);
+		this.x = newPlace.x;
+		this.y = newPlace.y;
+		this.z = 1;
+	    }
+	}
     };
 
     socket.emit('id', id);
@@ -238,13 +248,18 @@ io.sockets.on('connection', function (socket) {
 		counter = counter += 1;
 		entities[mineId] = {
 		    id : mineId,
-		    symbol = '.',
+		    symbol : '.',
 		    color: "#FFF",
 		    x: entities[id].x + i,
 		    y: entities[id].y + j,
 		    z: entities[id].z,
 		    onCollide: function(entity) {
-			
+			for(var i = 0; i < 10; i++) {
+			    entities[this.idArray].color = "#F00";			    
+			    if(! entity.health == undefined) {
+				entity.health -= 7;
+			    }
+			}
 		    }
 		}
 	    }
