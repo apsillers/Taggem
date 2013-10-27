@@ -74,6 +74,7 @@ function generateMapLevel(level) {
                 symbol: '+',
                 otherSymbol: otherSym,
                 isOpen: false,
+                blocksLight: true,
                 blocking: true,
                 color: "#FF0",
                 x: x,
@@ -138,6 +139,7 @@ io.sockets.on('connection', function (socket) {
         }
         openables[i].isOpen = doOpen;
         openables[i].blocking = !doOpen;
+        openables[i].blocksLight = !doOpen;
       }
       changeListener.emit("change", [entities[id].z], ['pos']);
     }
@@ -312,9 +314,17 @@ function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
 
-var lightPassesOnLevel = function (level) { return function(x, y) {
-    if(mapData[level][x] != undefined) { return (mapData[level][x][y] == 0); }
-    else { return false; }
+var lightPassesOnLevel = function (ents, level) { return function(x, y) {
+    if (mapData[level] == undefined ||
+        mapData[level][x] == undefined || 
+        mapData[level][x][y] != 0) { return false; }
+    here = getEntitiesByLocation(level, x, y, ents);
+    for (var i = 0; i < here.length; i++) {
+      if (here[i].blocksLight) {
+        return false;
+      }
+    }
+    return true;
 }};
 
 // given a master set of entities and an entity id,
@@ -323,7 +333,8 @@ function filterEntities(id, inputEntities) {
     var you = inputEntities[id];
     var filteredEntities = {}
 
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPassesOnLevel(you.z));
+    var fov = new ROT.FOV.PreciseShadowcasting(
+        lightPassesOnLevel(inputEntities, you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
@@ -354,7 +365,8 @@ function filterMapData(id, inputMapData) {
     var you = entities[id];
     var filteredMapData = {};
     
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPassesOnLevel(you.z));
+    var fov = new ROT.FOV.PreciseShadowcasting(
+        lightPassesOnLevel(entities, you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
