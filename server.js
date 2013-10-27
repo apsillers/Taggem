@@ -98,6 +98,7 @@ function generateMapLevel(level) {
                 symbol: '+',
                 otherSymbol: otherSym,
                 isOpen: false,
+                blocksLight: true,
                 blocking: true,
                 color: "#FF0",
                 x: x,
@@ -126,6 +127,11 @@ entities[boulderid] = {
     };
 
 var changeListener = new EventEmitter();
+
+
+var Pit = require("pit")(ensureLevelExists, getValidPosition, changeListener);
+console.log(Pit);
+
 
 io.sockets.on('connection', function (socket) {
 
@@ -174,8 +180,9 @@ io.sockets.on('connection', function (socket) {
         }
         openables[i].isOpen = doOpen;
         openables[i].blocking = !doOpen;
+        openables[i].blocksLight = !doOpen;
       }
-      changeListener.emit("change", [entities[id].z], ['pos']);
+      changeListener.emit("change", [entities[id].z], ['pos', 'map']);
     }
 
     // data: x/y/z object
@@ -269,24 +276,13 @@ io.sockets.on('connection', function (socket) {
     }
     
     socket.on("zap", function(data) {
-	var trapID = genId();
-	entities[trapID] = {
-	    id: trapID,
-	    symbol: ".",
-	    color: "#FFF",
-	    x: entities[id].x + (data.x * 4),
-	    y: entities[id].y + (data.y * 4),
-	    z: entities[id].z,
-	    onCollide: function(entity) {
-		ensureLevelExists(entity.z + 1);
-		entity.z += 1;
-		var foo = getValidPosition(entity.z);
-		entity.x = foo.x;
-		entity.y = foo.y;
-		this.symbol = "^";
-		changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
-	    }
-	}
+	    var trapID = genId();
+	    entities[trapID] = new Pit({
+	        id: trapID,
+	        x: entities[id].x + (data.x * 4),
+	        y: entities[id].y + (data.y * 4),
+	        z: entities[id].z,
+	    });
     });
     
     socket.on("mine", function(data) {
@@ -363,8 +359,8 @@ io.sockets.on('connection', function (socket) {
     // this could be limited at least to level-specific activity, or even more localized
     function onChange(levels, types) {
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
-            if(types == undefined || types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
             if(types == undefined || types.indexOf('pos') != -1) { socket.emit('pos', filterEntities(id, entities)); }
+            if(types == undefined || types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
         }
     }
     changeListener.on("change", onChange);
@@ -384,17 +380,27 @@ function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
 
+var lightPassesOnLevel = function (ents, level) { return function(x, y) {
+    if (mapData[level] == undefined ||
+        mapData[level][x] == undefined || 
+        mapData[level][x][y] != 0) { return false; }
+    here = getEntitiesByLocation(level, x, y, ents);
+    for (var i = 0; i < here.length; i++) {
+      if (here[i].blocksLight) {
+        return false;
+      }
+    }
+    return true;
+}};
+
 // given a master set of entities and an entity id,
 // return the set of entires visible to the entity with the given id
 function filterEntities(id, inputEntities) {
     var you = inputEntities[id];
     var filteredEntities = {}
 
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
+    var fov = new ROT.FOV.PreciseShadowcasting(
+        lightPassesOnLevel(inputEntities, you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
@@ -425,11 +431,8 @@ function filterMapData(id, inputMapData) {
     var you = entities[id];
     var filteredMapData = {};
     
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
+    var fov = new ROT.FOV.PreciseShadowcasting(
+        lightPassesOnLevel(entities, you.z));
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
