@@ -285,10 +285,11 @@ function filterEntities(id, inputEntities) {
         }
     });
     
+    // psychic players see all players on the level
     if(you.psychic) {
         for(var i in entities) {
             var e = entities[i];
-            if(e.hasBrain) { filteredEntities[e.id] = e; }
+            if(e.hasBrain && e.z == you.z) { filteredEntities[e.id] = e; }
         }
     }   
 
