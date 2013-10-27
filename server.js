@@ -18,6 +18,7 @@ function handler (req, res) {
 }
 
 var EventEmitter = require('events').EventEmitter;
+var changeListener = new EventEmitter();
 
 var ROT = require("rot");
 
@@ -27,6 +28,7 @@ ROT.DEFAULT_HEIGHT = 30;
 
 var entities = {};
 var activeEntities = {};
+var entitiesByLocation = [];
 
 var genId;
 (function() {
@@ -34,143 +36,123 @@ var genId;
     genId = function() { return id++; }
 })();
 
-// generate level 1 map
 var mapData = [];
 
-function getValidPosition(level) {
-  ensureLevelExists(level);
-  do {
-    x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
-    y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
-  } while (mapData[level][x][y])
-  return {x: x, y: y}
-}
+var utilities = {
 
-function ensureLevelExists(level) {
-  if (typeof mapData[level] == 'undefined') {
-    generateMapLevel(level);
-  }
-}
+    getValidPosition: function(level) {
+      utilities.ensureLevelExists(level);
+      do {
+        x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
+        y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
+      } while (mapData[level][x][y])
+      return {x: x, y: y}
+    },
 
-function generateMapLevel(level) {
-    mapData[level] = [];
-    mapGenerator = new ROT.Map.Digger();
-    mapGenerator.create(function(x, y, type) {
-        if(typeof mapData[level][x] == 'undefined') mapData[level][x] = [];
-        mapData[level][x][y] = type;
-    });
-    
-    var rooms = mapGenerator.getRooms();
-    var upStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
-    var downStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
-    
-    var upId = genId();
-    entities[upId] = {
-	id : upId,
-	symbol : '<',
-	color: "#FF0",
-	y : Math.floor(upStairs.getTop() + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
-	x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
-	z : level
-    };
+    ensureLevelExists: function(level) {
+      if (typeof mapData[level] == 'undefined') {
+        utilities.generateMapLevel(level);
+      }
+    },
 
-    var downId = genId();
-    entities[downId] = {
-	id : downId,
-	symbol : '>',
-	color: "#FF0",
-	y : Math.floor(upStairs.getTop() - 1 + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
-	x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
-	z : level
-    };
-
-
-    for(var i=0; i<rooms.length; ++i) {
-        rooms[i].getDoors(function(x, y) {
-            if(ROT.RNG.getUniform() > 0.8) return;
-            var otherSym = '|';
-            if (x == rooms[i].getLeft() - 1 || 
-                x == rooms[i].getRight() + 1)
-              otherSym = '-';
-            var doorId = genId();
-            entities[doorId] = {
-                id: doorId,
-                symbol: '+',
-                otherSymbol: otherSym,
-                isOpen: false,
-                blocksLight: true,
-                blocking: true,
-                color: "#FF0",
-                x: x,
-                y: y,
-                z: level
-            };
+    generateMapLevel: function(level) {
+        mapData[level] = [];
+        entitiesByLocation[level] = {};
+        mapGenerator = new ROT.Map.Digger();
+        mapGenerator.create(function(x, y, type) {
+            if(typeof mapData[level][x] == 'undefined') mapData[level][x] = [];
+            mapData[level][x][y] = type;
         });
+        
+        var rooms = mapGenerator.getRooms();
+        var upStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
+        var downStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
+        
+        var upId = genId();
+        entities[upId] = {
+	        id : upId,
+	        symbol : '<',
+	        color: "#FF0",
+	        y : Math.floor(upStairs.getTop() + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
+	        x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
+	        z : level
+        };
+
+        var downId = genId();
+        entities[downId] = {
+	        id : downId,
+	        symbol : '>',
+	        color: "#FF0",
+	        y : Math.floor(upStairs.getTop() - 1 + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
+	        x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
+	        z : level
+        };
+
+
+        for(var i=0; i<rooms.length; ++i) {
+            rooms[i].getDoors(function(x, y) {
+                if(ROT.RNG.getUniform() > 0.8) return;
+                var otherSym = '|';
+                if (x == rooms[i].getLeft() - 1 || 
+                    x == rooms[i].getRight() + 1)
+                  otherSym = '-';
+                new construct.Door({
+                    id: genId(),
+                    otherSymbol: otherSym,
+                    isOpen: false,
+                    x: x,
+                    y: y,
+                    z: level
+                });
+            });
+        }
+    },
+
+    getEntitiesByLocation: function(z,x,y,entities) {
+        if(typeof entitiesByLocation[z] != 'undefined' && typeof entitiesByLocation[z][x+","+y] != 'undefined') {
+            return entitiesByLocation[z][x+","+y].slice();
+        } else {
+            return [];
+        }
     }
+
 }
 
-generateMapLevel(1);
+var construct = require("entity_objects")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData);
 
+// generate level 1 map
+utilities.generateMapLevel(1);
 
-
-var boulderid = genId();
-var boulderpos = getValidPosition(1);
-entities[boulderid] = {
-        id: boulderid,
-        symbol: '0',
-        blocking: true,
-        pushable: true,
-        color: "#FFF",
-        x: boulderpos.x,
-        y: boulderpos.y,
-        z: 1
-    };
-
-var changeListener = new EventEmitter();
-
-
-var Pit = require("pit")(ensureLevelExists, getValidPosition, changeListener);
-console.log(Pit);
-
+var boulderpos = utilities.getValidPosition(1);
+new construct.Boulder({
+    id: genId(),
+    x: boulderpos.x,
+    y: boulderpos.y,
+    z: 1
+});
 
 io.sockets.on('connection', function (socket) {
 
     var id = genId();
-    var newPos = getValidPosition(1);
-    entities[id] = {
+    var newPos = utilities.getValidPosition(1);
+    new construct.Player({
         id: id,
         symbol: '@',
-        blocking: true,
-        canPush: true,
-        canDig: true,
         color: colorFromId(id),
         x: newPos.x,
         y: newPos.y,
         z: 1,
-	health: 10,
-	setHealth: function(healthDelta) {
-	    this.health += healthDelta;
-	    if(this.health <= 0) {
-		var newPlace = getValidPosition(1);
-		this.x = newPlace.x;
-		this.y = newPlace.y;
-		this.z = 1;
-		this.health = 10;
-		socket.emit("change", [this.z], ["pos", "map"]);
-	    }
-	}
-    };
+        health: 10
+    });
 
     socket.emit('id', id);
-
-    socket.on('move', function(data) { step(id, data); });
 
     socket.on('open', function(data) { setOpen(id, data, true); });
     socket.on('close', function(data) { setOpen(id, data, false); });
 
     function setOpen(id, data, doOpen) {
-      you = entities[id];
-      ents = getEntitiesByLocation(you.z, you.x + data.x, you.y + data.y, entities);
+      var you = entities[id];
+      var ents = utilities.getEntitiesByLocation(you.z, you.x + data.x, you.y + data.y, entities);
       openables = ents.filter(function (e) { return typeof e.isOpen != 'undefined'; });
       for (var i = 0; i < openables.length; i++) {
         if (openables[i].isOpen != doOpen) {
@@ -185,100 +167,12 @@ io.sockets.on('connection', function (socket) {
       changeListener.emit("change", [entities[id].z], ['pos', 'map']);
     }
 
-    // data: x/y/z object
-    // id: entity ID of thing trying to step
-    // returns true if step succeeds, or returns whatever object blocked the move
-    function step(id, data) {
-        var stepper = entities[id];
 
-        var newPos = {
-                       x: stepper.x + data.x,
-                       y: stepper.y + data.y,
-                       z: stepper.z + (data.z==undefined?0:data.z)
-                     };
-
-        // TODO: stairs; move player & create level if does not already exist
-        if(data.z == 1 || data.z == -1) {
-            return false;
-        }
-                    
-        // if there is a wall
-        if(mapData[newPos.z][newPos.x][newPos.y]) {
-            // if the moving thing can dig
-            if(stepper.canDig) {
-                mapData[newPos.z][newPos.x][newPos.y] = 0;
-                changeListener.emit("change", [newPos.z], ['map']);
-            }
-
-            newPos.blocking = true;
-            if(stepper.onCollide) { stepper.onCollide(newPos); }
-
-            // we were blocked not by an entity but by terrain;
-            // return an object representing the blocking terrain
-            return false;
-        }
-        
-        var destEntities = getEntitiesByLocation(newPos.z, newPos.x, newPos.y, entities);
-        var blockingEntities = destEntities.filter(function(e) { return !!e.blocking });    
-
-        // if there's nothing there, move freely
-        if(blockingEntities.length == 0) {
-            stepper.x = newPos.x;
-            stepper.y = newPos.y;
-            stepper.z = newPos.z;
-            changeListener.emit("change", [newPos.z], ['pos', 'map']);
-
-            for(var i=0; i<destEntities.length; ++i) {
-                if(destEntities[i].onCollide) destEntities[i].onCollide(stepper);
-                if(stepper.onCollide) stepper.onCollide(destEntities[i]);
-            }
-
-            return true;
-        }
-        
-        var pushableEntities = destEntities.filter(function(e) { return e.pushable; });
-
-        if(stepper.canPush && pushableEntities.length != 0) {
-            var stepResult = true;
-            for(var i=0; i<pushableEntities.length; ++i) {
-                pushableEntity = pushableEntities[i];
-
-                // define where the pushable entity would end up
-                var stepResult = step(pushableEntity.id, data) && stepResult;
-            }
-
-            if(stepResult) {
-                stepper.x = newPos.x;
-                stepper.y = newPos.y;
-                stepper.z = newPos.z;
-
-                for(var i=0; i<destEntities.length; ++i) {
-                    if(stepper.onCollide) { stepper.onCollide(destEntities[i]); }
-                    if(destEntities[i].onCollide) { destEntities[i].onCollide(stepper); }
-                }
-            } else {
-                for(var i=0; i<blockingEntities.length; ++i) {
-                    if(stepper.onCollide) { stepper.onCollide(blockingEntities[i]); }
-                    if(blockingEntities[i].onCollide) { blockingEntities[i].onCollide(stepper); }
-                }
-            }
-
-            changeListener.emit("change", [newPos.z], ['pos']);
-            return true;
-        }
-
-        for(var i=0; i<blockingEntities.length; ++i) {
-            if(stepper.onCollide) { stepper.onCollide(blockingEntities[i]); }
-            if(blockingEntities[i].onCollide) { blockingEntities[i].onCollide(stepper); }
-        }
-
-        return false;
-    }
+    socket.on('move', function(data) { entities[id].step(data); });
     
     socket.on("zap", function(data) {
-	    var trapID = genId();
-	    entities[trapID] = new Pit({
-	        id: trapID,
+	    new construct.Pit({
+	        id: genId(),
 	        x: entities[id].x + (data.x * 4),
 	        y: entities[id].y + (data.y * 4),
 	        z: entities[id].z,
@@ -286,72 +180,40 @@ io.sockets.on('connection', function (socket) {
     });
     
     socket.on("mine", function(data) {
-	var myIds = [];
-	var counter = 0;
-	for(var i = -1; i <= 1; i++) {
-	    for(var j = -1; j <= 1; j++) {
-		var mineId = genId();
+	    var myIds = [];
+	    var counter = 0;
+	    for(var i = -1; i <= 1; i++) {
+	        for(var j = -1; j <= 1; j++) {
+		        var mineId = genId();
 		
-		myIds[counter] = mineId;
-		counter = counter + 1;
+		        myIds[counter] = mineId;
+		        counter = counter + 1;
 
-		entities[mineId] = {
-		    id : mineId,
-		    symbol : '.',
-		    color: "#FFF",
-		    x: entities[id].x + i,
-		    y: entities[id].y + j,
-		    z: entities[id].z,
-		    onCollide: function(entity) {
-			changeListener.emit("change", [entity.z], ["pos"]);
-			if(entity.health != undefined) {
-			    entity.setHealth(-10);
-			}
-			
-			for(var i = 0; i < 9; i++) {
-			    entities[this.idArray[i]].color = "#F00";			    
-			    delete entities[this.idArray[i]];
-			}
-		    }
-		}
+		        new construct.Mine({
+		            id : mineId,
+		            x: entities[id].x + i,
+		            y: entities[id].y + j,
+		            z: entities[id].z,
+		            sisterMineIds: myIds
+		        });
+            }
 	    }
-	}
-	for(var i = 0; i < 9; i++) {
-	    entities[myIds[i]].idArray = myIds;
-	}
+
     });
 
     socket.on("shoot", function(data) {
         var shotId = genId();
-        entities[shotId] = activeEntities[shotId] = {
+        new construct.Shot({
             id: shotId,
-            symbol: '*',
             color: "#0FF",
             x: entities[id].x,
             y: entities[id].y,
             z: entities[id].z,
-            timeToNext: 100,
-            intervalTime: 100,
-            act: function() {
-                step(shotId, data);
-            },
-            onCollide: function(entity) {
-                if(!entity) return;
+            interval: 100,
+            vector: data
+        });
 
-                if(entity.blocking) {
-                    var level = this.z;
-                    delete entities[shotId];
-                    delete activeEntities[shotId];
-
-                    entity.frozen = true;
-                    entity.pushable = true;
-                    setTimeout(function() { entity.frozen = false; entity.pushable = false; }, 2000);
-                    changeListener.emit("change", [level], ['pos']);
-                }
-            }
-        };
-
-        changeListener.emit("change");
+        changeListener.emit("change", [entities[id].z], ["pos"]);
     });
 
 
@@ -384,7 +246,7 @@ var lightPassesOnLevel = function (ents, level) { return function(x, y) {
     if (mapData[level] == undefined ||
         mapData[level][x] == undefined || 
         mapData[level][x][y] != 0) { return false; }
-    here = getEntitiesByLocation(level, x, y, ents);
+    here = utilities.getEntitiesByLocation(level, x, y, ents);
     for (var i = 0; i < here.length; i++) {
       if (here[i].blocksLight) {
         return false;
@@ -404,7 +266,7 @@ function filterEntities(id, inputEntities) {
 
     var item;
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-        items = getEntitiesByLocation(you.z, x, y, inputEntities)
+        items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
         for(var i=0; i<items.length; ++i) {
             filteredEntities[items[i].id] = items[i];
         }
@@ -415,16 +277,6 @@ function filterEntities(id, inputEntities) {
     filteredEntities[id] = inputEntities[id];
     
     return filteredEntities;
-}
-
-function getEntitiesByLocation(z,x,y,entities) {
-    var collection = [];
-    for(i in entities) {
-        if(entities[i].x == x && entities[i].y == y && entities[i].z == z) {
-            collection.push(entities[i]);
-        }
-    }
-    return collection;
 }
 
 function filterMapData(id, inputMapData) {
