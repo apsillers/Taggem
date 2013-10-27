@@ -12,13 +12,6 @@ var mapData = [];
 var display = new ROT.Display({fontSize:12});
 document.documentElement.appendChild(display.getContainer());
 
-/* input callback */
-var lightPasses = function(x, y) {
-    try { 
-        return (mapData[level][x][y] == 0);
-    } catch(e) { return false; }
-}
-
 var socket = io.connect('http://' + location.host);
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, positions); });
 socket.on("pos", function(pos) { redraw({}, pos); });
@@ -39,16 +32,6 @@ function initMapLevel(level) {
             mapData[level][i][j] = -1;
         }
     }
-}
-
-function drawFloor(you) {
-    var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
-
-    fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-        var ch = (mapData[you.z][x][y] ? "": ".");
-        var color = (mapData[you.z][x][y] ? "#777": "#000");
-        drawMapChar(x, y, ch, "#fff", color);
-    });
 }
 
 var shotMode = false;
@@ -122,9 +105,6 @@ function redraw(map, posData) {
     }
 
     drawMap(map);
-
-    if(posData[id]) drawFloor(posData[id]);
-    
     drawThings(posData);
 }
 

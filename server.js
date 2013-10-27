@@ -141,7 +141,7 @@ io.sockets.on('connection', function (socket) {
         openables[i].blocking = !doOpen;
         openables[i].blocksLight = !doOpen;
       }
-      changeListener.emit("change", [entities[id].z], ['pos']);
+      changeListener.emit("change", [entities[id].z], ['pos', 'map']);
     }
 
     // data: x/y/z object
@@ -369,7 +369,6 @@ function filterMapData(id, inputMapData) {
         lightPassesOnLevel(entities, you.z));
 
     var item;
-    console.log(you.z);
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
         filteredMapData[x+","+y] = inputMapData[you.z][x][y];
     });
