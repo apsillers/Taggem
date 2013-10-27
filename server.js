@@ -242,13 +242,13 @@ io.sockets.on('connection', function (socket) {
 	    y: entities[id].y + (data.y * 4),
 	    z: entities[id].z,
 	    onCollide: function(entity) {
-		ensureLevelExists(entity.z + 1);
-		entity.z += 1;
-		var foo = getValidPosition(entity.z);
-		entity.x = foo.x;
-		entity.y = foo.y;
-		this.symbol = "^";
-		changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
+		    ensureLevelExists(entity.z + 1);
+		    entity.z += 1;
+		    var foo = getValidPosition(entity.z);
+		    entity.x = foo.x;
+		    entity.y = foo.y;
+		    this.symbol = "^";
+		    changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
 	    }
 	}
     });
@@ -291,8 +291,8 @@ io.sockets.on('connection', function (socket) {
     // this could be limited at least to level-specific activity, or even more localized
     function onChange(levels, types) {
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
-            if(types == undefined || types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
             if(types == undefined || types.indexOf('pos') != -1) { socket.emit('pos', filterEntities(id, entities)); }
+            if(types == undefined || types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
         }
     }
     changeListener.on("change", onChange);
@@ -357,6 +357,7 @@ function filterMapData(id, inputMapData) {
     var fov = new ROT.FOV.PreciseShadowcasting(lightPassesOnLevel(you.z));
 
     var item;
+    console.log(you.z);
     fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
         filteredMapData[x+","+y] = inputMapData[you.z][x][y];
     });
