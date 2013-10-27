@@ -61,6 +61,30 @@ function generateMapLevel(level) {
     });
     
     var rooms = mapGenerator.getRooms();
+    var upStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
+    var downStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
+    
+    var upId = genId();
+    entities[upId] = {
+	id : upId,
+	symbol : '<',
+	color: "#FF0",
+	y : Math.floor(upStairs.getTop() + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
+	x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
+	z : level
+    };
+
+    var downId = genId();
+    entities[downId] = {
+	id : downId,
+	symbol : '>',
+	color: "#FF0",
+	y : Math.floor(upStairs.getTop() - 1 + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
+	x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
+	z : level
+    };
+
+
     for(var i=0; i<rooms.length; ++i) {
         rooms[i].getDoors(function(x, y) {
             if(ROT.RNG.getUniform() > 0.8) return;
@@ -125,6 +149,8 @@ io.sockets.on('connection', function (socket) {
 		this.x = newPlace.x;
 		this.y = newPlace.y;
 		this.z = 1;
+		this.health = 10;
+		socket.emit("change", [this.z], ["pos", "map"]);
 	    }
 	}
     };
@@ -269,8 +295,10 @@ io.sockets.on('connection', function (socket) {
 	for(var i = -1; i <= 1; i++) {
 	    for(var j = -1; j <= 1; j++) {
 		var mineId = genId();
+		
 		myIds[counter] = mineId;
-		counter = counter += 1;
+		counter = counter + 1;
+
 		entities[mineId] = {
 		    id : mineId,
 		    symbol : '.',
@@ -279,18 +307,21 @@ io.sockets.on('connection', function (socket) {
 		    y: entities[id].y + j,
 		    z: entities[id].z,
 		    onCollide: function(entity) {
-			for(var i = 0; i < 10; i++) {
-			    entities[this.idArray].color = "#F00";			    
-			    if(! entity.health == undefined) {
-				entity.health -= 7;
-			    }
+			changeListener.emit("change", [entity.z], ["pos"]);
+			if(entity.health != undefined) {
+			    entity.setHealth(-10);
+			}
+			
+			for(var i = 0; i < 9; i++) {
+			    entities[this.idArray[i]].color = "#F00";			    
+			    delete entities[this.idArray[i]];
 			}
 		    }
 		}
 	    }
 	}
-	for(var i = 0; i < 10; i++) {
-	    entities[myIds[i]].next = myIds;
+	for(var i = 0; i < 9; i++) {
+	    entities[myIds[i]].idArray = myIds;
 	}
     });
 

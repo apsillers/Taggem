@@ -55,14 +55,18 @@ var shotMode = false;
 var zapMode = false;
 var openMode = false;
 var closeMode = false;
+
 window.addEventListener("keydown", function(e) {
     var code = e.keyCode;
     var action = "move";
+    var mine = "mine";
 
     if(shotMode) {action = "shoot"; }
     if(zapMode) { action = "zap"};
     if(openMode) { action = "open"};
     if(closeMode) { action = "close"};
+
+
 
     if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0 }); }
     if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0 }); }
@@ -79,7 +83,12 @@ window.addEventListener("keydown", function(e) {
     openMode = false;
     closeMode = false;
 
-    if(ROT.VK_Z == code) { zapMode = true; }
+    
+    if (ROT.VK_A == code) { 
+	action = "mine";
+	socket.emit(action);
+	}
+    if (ROT.VK_Z == code) { zapMode = true; }
     if (ROT.VK_S == code) { shotMode = true; }
     if (ROT.VK_O == code) { openMode = true; }
     if (ROT.VK_C == code) { closeMode = true; }
