@@ -99,10 +99,23 @@ function drawMap(mapUpdates) {
     }
 }
 
-function drawThings(posData) {
+function drawEntities(posData) {
     for(var i in posData) {
         var pos = posData[i];
-        drawMapChar(pos.x, pos.y, pos.symbol, pos.color);
+
+        // if entity is a blocking entity (player, boulder), draw it
+        if(pos.blocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
+        else {
+            // if entity is non-blocking, defer to any blocking entities on the space
+            var hasBlocking = false;
+            for(var j in posData) {
+                if(posData[j].blocking && posData[j].x == pos.x && posData[j].y == pos.y) {
+                    hasBlocking = true;
+                    break;
+                }
+            }
+            if(!hasBlocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
+        }
     }
 }
 
@@ -114,7 +127,7 @@ function redraw(map, posData) {
     }
 
     drawMap(map);
-    drawThings(posData);
+    drawEntities(posData);
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
