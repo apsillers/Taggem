@@ -232,8 +232,15 @@ io.sockets.on('connection', function (socket) {
     // this could be limited at least to level-specific activity, or even more localized
     function onChange(levels, types) {
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
-            if(types == undefined || types.indexOf('pos') != -1) { socket.emit('pos', filterEntities(id, entities)); }
-            if(types == undefined || types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
+            if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
+                socket.emit('map+pos', {
+                                         'pos': filterEntities(id, entities),
+                                         'map': filterMapData(id, mapData)
+                                        });
+            } else {
+                if(types.indexOf('pos') != -1) { socket.emit('pos', filterEntities(id, entities)); }
+                if(types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
+            }
         }
     }
     changeListener.on("change", onChange);

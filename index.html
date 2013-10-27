@@ -13,6 +13,7 @@ var display = new ROT.Display({fontSize:12});
 document.documentElement.appendChild(display.getContainer());
 
 var socket = io.connect('http://' + location.host);
+socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, positions); });
 socket.on("pos", function(pos) { redraw({}, pos); });
 socket.on("id", function(myid) {
