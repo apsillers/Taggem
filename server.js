@@ -312,16 +312,17 @@ function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
 
+var lightPasses = function(x, y) {
+    if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
+    else { return false; }
+}
+
 // given a master set of entities and an entity id,
 // return the set of entires visible to the entity with the given id
 function filterEntities(id, inputEntities) {
     var you = inputEntities[id];
     var filteredEntities = {}
 
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
     var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
 
     var item;
@@ -353,10 +354,6 @@ function filterMapData(id, inputMapData) {
     var you = entities[id];
     var filteredMapData = {};
     
-    var lightPasses = function(x, y) {
-        if(mapData[you.z][x] != undefined) { return (mapData[you.z][x][y] == 0); }
-        else { return false; }
-    }
     var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
 
     var item;
