@@ -45,7 +45,9 @@ var utilities = {
       do {
         x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
         y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
-      } while (mapData[level][x][y])
+        // reject solid walls and light-blocking entities
+      } while (mapData[level][x][y] &&
+               !utilities.getEntitiesByLocation(level, x, y).some(function(e) { return e.blocksLight; }))
       return {x: x, y: y}
     },
 
