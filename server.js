@@ -104,6 +104,11 @@ entities[boulderid] = {
 
 var changeListener = new EventEmitter();
 
+
+var Pit = require("pit")(ensureLevelExists, getValidPosition, changeListener);
+console.log(Pit);
+
+
 io.sockets.on('connection', function (socket) {
 
     var id = genId();
@@ -235,24 +240,13 @@ io.sockets.on('connection', function (socket) {
     }
     
     socket.on("zap", function(data) {
-	var trapID = genId();
-	entities[trapID] = {
-	    id: trapID,
-	    symbol: ".",
-	    color: "#FFF",
-	    x: entities[id].x + (data.x * 4),
-	    y: entities[id].y + (data.y * 4),
-	    z: entities[id].z,
-	    onCollide: function(entity) {
-		    ensureLevelExists(entity.z + 1);
-		    entity.z += 1;
-		    var foo = getValidPosition(entity.z);
-		    entity.x = foo.x;
-		    entity.y = foo.y;
-		    this.symbol = "^";
-		    changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
-	    }
-	}
+	    var trapID = genId();
+	    entities[trapID] = new Pit({
+	        id: trapID,
+	        x: entities[id].x + (data.x * 4),
+	        y: entities[id].y + (data.y * 4),
+	        z: entities[id].z,
+	    });
     });
     
     socket.on("shoot", function(data) {
