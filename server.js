@@ -116,6 +116,56 @@ var utilities = {
         } else {
             return [];
         }
+    },
+
+    // given a master set of entities and an entity id,
+    // return the set of entires visible to the entity with the given id
+    filterEntities: function(id, inputEntities) {
+        var you = inputEntities[id];
+        var filteredEntities = {}
+
+        var fov = new ROT.FOV.PreciseShadowcasting(
+            lightPassesOnLevel(inputEntities, you.z));
+
+        var item;
+        fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
+            items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
+            for(var i=0; i<items.length; ++i) {
+                if(items[i].knownTo) console.log(items[i].knownTo, items[i].knownTo.indexOf(you.id) != -1);
+                if(!items[i].invisible && (!items[i].hidden || (items[i].knownTo && items[i].knownTo.indexOf(you.id) != -1))) {
+                    filteredEntities[items[i].id] = items[i];
+                }
+            }
+        });
+        
+        // psychic players see all players on the level
+        if(you.psychic) {
+            for(var i in inputEntities) {
+                var e = inputEntities[i];
+                if(e.hasBrain && e.z == you.z) { filteredEntities[e.id] = e; }
+            }
+        }   
+
+        filteredEntities[id] = you;
+        
+        return filteredEntities;
+    },
+
+    // return a dictionary with "x,y" keys that have the map values of
+    // all maps spaces visible to the player with the given id
+    filterMapData: function(id, inputMapData) {
+        var you = entities[id];
+        var filteredMapData = {};
+        
+        var fov = new ROT.FOV.PreciseShadowcasting(
+            lightPassesOnLevel(entities, you.z));
+
+        var item;
+        fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
+            filteredMapData[x+","+y] = inputMapData[you.z][x][y];
+        });
+        
+        return filteredMapData;
     }
 
 }
@@ -175,10 +225,12 @@ io.sockets.on('connection', function (socket) {
     socket.on("zap", function(data) {
 	    new construct.Pit({
 	        id: genId(),
+            knownTo: [id],
 	        x: entities[id].x + (data.x * 4),
 	        y: entities[id].y + (data.y * 4),
 	        z: entities[id].z,
 	    });
+        changeListener.emit("change", [entities[id].z], ['pos']);
     });
     
     socket.on("mine", function(data) {
@@ -233,15 +285,17 @@ io.sockets.on('connection', function (socket) {
     // this should fire whenever a change happens to the world that may implicate a client redraw
     // this could be limited at least to level-specific activity, or even more localized
     function onChange(levels, types) {
+        if(entities[id] == undefined) { return; }
+
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
             if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
                 socket.emit('map+pos', {
-                                         'pos': filterEntities(id, entities),
-                                         'map': filterMapData(id, mapData)
+                                         'pos': utilities.filterEntities(id, entities),
+                                         'map': utilities.filterMapData(id, mapData)
                                         });
             } else {
-                if(types.indexOf('pos') != -1) { socket.emit('pos', filterEntities(id, entities)); }
-                if(types.indexOf('map') != -1) { socket.emit('map', filterMapData(id, mapData)); }
+                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.filterEntities(id, entities)); }
+                if(types.indexOf('map') != -1) { socket.emit('map', utilities.filterMapData(id, mapData)); }
             }
         }
     }
@@ -278,55 +332,6 @@ var lightPassesOnLevel = function (ents, level) {
         return true;
     }
 };
-
-// given a master set of entities and an entity id,
-// return the set of entires visible to the entity with the given id
-function filterEntities(id, inputEntities) {
-    var you = inputEntities[id];
-    var filteredEntities = {}
-
-    var fov = new ROT.FOV.PreciseShadowcasting(
-        lightPassesOnLevel(inputEntities, you.z));
-
-    var item;
-    fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-        items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
-        for(var i=0; i<items.length; ++i) {
-            if(!items[i].invisible) {
-                filteredEntities[items[i].id] = items[i];
-            }
-        }
-    });
-    
-    // psychic players see all players on the level
-    if(you.psychic) {
-        for(var i in inputEntities) {
-            var e = inputEntities[i];
-            if(e.hasBrain && e.z == you.z) { filteredEntities[e.id] = e; }
-        }
-    }   
-
-    filteredEntities[id] = you;
-    
-    return filteredEntities;
-}
-
-// return a dictionary with "x,y" keys that have the map values of
-// all maps spaces visible to the player with the given id
-function filterMapData(id, inputMapData) {
-    var you = entities[id];
-    var filteredMapData = {};
-    
-    var fov = new ROT.FOV.PreciseShadowcasting(
-        lightPassesOnLevel(entities, you.z));
-
-    var item;
-    fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-        filteredMapData[x+","+y] = inputMapData[you.z][x][y];
-    });
-    
-    return filteredMapData;
-}
 
 // make active entities act (shots, monsters, time bombs, etc.)
 var worldPeriod = 100;
