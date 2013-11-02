@@ -309,6 +309,16 @@ io.sockets.on('connection', function (socket) {
         changeListener.emit("change", [entities[id].z], ["pos"]);
     });
 
+    socket.on("drop", function(data) {
+        var you = entities[id];
+        if(inventories[id][data.itemNum] != undefined) {
+            inventories[id][data.itemNum].place(you.z, you.x, you.y);
+            delete inventories[id][data.itemNum];
+        }
+
+        changeListener.emit("change", [entities[id].z], ["pos"]);
+    });
+
     // this should fire whenever a change happens to the world that may implicate a client redraw
     // this could be limited at least to level-specific activity, or even more localized
     function onChange(levels, types) {
