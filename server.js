@@ -1,7 +1,7 @@
 var app = require('http').createServer(handler)
   , io = require('socket.io').listen(app)
   , fs = require('fs')
-app.listen(80);
+app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_INTERNAL_IP || "127.0.0.1");
 io.set('log level', 1);
 function handler (req, res) {
   var path = (req['url']=="/")?"/index.html":'/rot.min.js';
