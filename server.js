@@ -1,4 +1,4 @@
-/*var app = require('http').createServer(handler)
+var app = require('http').createServer(handler)
   , io = require('socket.io').listen(app)
   , fs = require('fs');
 
@@ -373,4 +373,3 @@ setInterval(function() {
         }
     }
 }, worldPeriod);
-*/
