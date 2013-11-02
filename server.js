@@ -1,6 +1,8 @@
 var app = require('http').createServer(handler)
-  , io = require('socket.io').listen(app)
+  , io = require('socket.io')
   , fs = require('fs');
+
+io.set("transports", ["xhr-polling"]);
 
 console.log(process.env.OPENSHIFT_NODEJS_PORT, process.env.OPENSHIFT_NODEJS_IP);
 
