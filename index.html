@@ -40,32 +40,40 @@ var zapMode = false;
 var openMode = false;
 var closeMode = false;
 
+// do we expect an item identifier
+var expectingItem = false;
+var itemNum = null;
+
 window.addEventListener("keydown", function(e) {
     var code = e.keyCode;
+
     var action = "move";
     var mine = "mine";
 
-    if(shotMode) {action = "shoot"; }
-    if(zapMode) { action = "zap"};
-    if(openMode) { action = "open"};
-    if(closeMode) { action = "close"};
+    if(shotMode) { action = "shoot"; }
+    if(zapMode) { action = "zap"; }
+    if(openMode) { action = "open"; }
+    if(closeMode) { action = "close"; }
 
+    if(expectingItem) {
+        itemNum = code - 48;
+        expectingItem = false;
+    } else {
+        if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0, itemNum: itemNum }); }
+        if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0, itemNum: itemNum }); }
+        if (ROT.VK_K == code) { socket.emit(action, { x:0, y:-1, itemNum: itemNum }); }
+        if (ROT.VK_J == code) { socket.emit(action, { x:0, y:1, itemNum: itemNum }); }
+        
+        if (ROT.VK_Y == code) { socket.emit(action, { x:-1, y:-1, itemNum: itemNum }); }
+        if (ROT.VK_U == code) { socket.emit(action, { x:1, y:-1, itemNum: itemNum }); }
+        if (ROT.VK_B == code) { socket.emit(action, { x:-1, y:1, itemNum: itemNum }); }
+        if (ROT.VK_N == code) { socket.emit(action, { x:1, y:1, itemNum: itemNum }); }
 
-
-    if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0 }); }
-    if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0 }); }
-    if (ROT.VK_K == code) { socket.emit(action, { x:0, y:-1 }); }
-    if (ROT.VK_J == code) { socket.emit(action, { x:0, y:1 }); }
-    
-    if (ROT.VK_Y == code) { socket.emit(action, { x:-1, y:-1 }); }
-    if (ROT.VK_U == code) { socket.emit(action, { x:1, y:-1 }); }
-    if (ROT.VK_B == code) { socket.emit(action, { x:-1, y:1 }); }
-    if (ROT.VK_N == code) { socket.emit(action, { x:1, y:1 }); }
-
-    shotMode = false;
-    zapMode = false;
-    openMode = false;
-    closeMode = false;
+        shotMode = false;
+        zapMode = false;
+        openMode = false;
+        closeMode = false;
+    }
 
     
     if (ROT.VK_A == code) { 
@@ -73,12 +81,13 @@ window.addEventListener("keydown", function(e) {
 	socket.emit(action);
 	}
     if (ROT.VK_Z == code) { zapMode = true; }
-    if (ROT.VK_S == code) { shotMode = true; }
+    if (ROT.VK_S == code) { shotMode = true; expectingItem = true; console.log("shot mode"); }
     if (ROT.VK_O == code) { openMode = true; }
     if (ROT.VK_C == code) { closeMode = true; }
     
 
     if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
+    if (ROT.VK_COMMA == code) { socket.emit("pickup"); }
 });
     
 var positions = {};

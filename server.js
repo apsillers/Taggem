@@ -29,6 +29,7 @@ ROT.DEFAULT_HEIGHT = 30;
 var entities = {};
 var activeEntities = {};
 var entitiesByLocation = [];
+var inventories = {}; 
 
 var genId;
 (function() {
@@ -39,6 +40,8 @@ var genId;
 var mapData = [];
 
 var utilities = {
+
+    genId: genId,
 
     getValidPosition: function(level) {
       utilities.ensureLevelExists(level);
@@ -131,7 +134,7 @@ var utilities = {
         fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
             items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
             for(var i=0; i<items.length; ++i) {
-                if(items[i].knownTo) console.log(items[i].knownTo, items[i].knownTo.indexOf(you.id) != -1);
+                //if(items[i].knownTo) console.log(items[i].knownTo, items[i].knownTo.indexOf(you.id) != -1);
                 if(!items[i].invisible && (!items[i].hidden || (items[i].knownTo && items[i].knownTo.indexOf(you.id) != -1))) {
                     filteredEntities[items[i].id] = items[i];
                 }
@@ -183,6 +186,15 @@ new construct.Boulder({
     y: boulderpos.y,
     z: 1
 });
+for(var i=0; i<10; ++i) {
+    var wandpos = utilities.getValidPosition(1);
+    new construct.FreezeWand({
+        id: genId(),
+        x: wandpos.x,
+        y: wandpos.y,
+        z: 1
+    });
+}
 
 io.sockets.on('connection', function (socket) {
 
@@ -197,6 +209,8 @@ io.sockets.on('connection', function (socket) {
         z: 1,
         health: 10
     });
+
+    inventories[id] = [];
 
     socket.emit('id', id);
 
@@ -256,18 +270,14 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on("shoot", function(data) {
-        var shotId = genId();
-        new construct.Shot({
-            id: shotId,
-            color: "#0FF",
-            x: entities[id].x,
-            y: entities[id].y,
-            z: entities[id].z,
-            interval: 100,
-            vector: data
-        });
+        var shotItem = inventories[id][data.itemNum];
 
-        changeListener.emit("change", [entities[id].z], ["pos"]);
+        if(shotItem && shotItem.onFire) {
+            shotItem.onFire(id, data);
+        } else {
+            //TODO: report failure to user
+            //console.log("shot failed");
+        }
     });
 
     socket.on("telepathy", function(data) {
@@ -278,6 +288,23 @@ io.sockets.on('connection', function (socket) {
 
     socket.on("invisible", function(data) {
         entities[id].invisible = data.active;
+
+        changeListener.emit("change", [entities[id].z], ["pos"]);
+    });
+
+    socket.on("pickup", function(data) {
+        var you = entities[id];
+        var ebl = entitiesByLocation;
+        // get item at player location
+        if(ebl[you.z] && ebl[you.z][you.x+","+you.y]) {
+            // TODO: how to decide what to pick up?
+            var pickups = ebl[you.z][you.x+","+you.y].filter(function(e) { return e.collectable; });
+            for(var i=0; i<pickups.length; ++i) {            
+                inventories[id].push(pickups[i]);
+                pickups[i].remove();
+            }
+            //console.log("pickup", inventories[id]);
+        }
 
         changeListener.emit("change", [entities[id].z], ["pos"]);
     });
