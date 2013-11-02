@@ -6,7 +6,7 @@ io.set("transports", ["xhr-polling"]);
 
 console.log(process.env.OPENSHIFT_NODEJS_PORT, process.env.OPENSHIFT_NODEJS_IP);
 
-app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
+/*app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
 io.set('log level', 1);
 function handler (req, res) {
   var path = (req['url']=="/")?"/index.html":'/rot.min.js';
@@ -377,4 +377,4 @@ setInterval(function() {
         }
     }
 }, worldPeriod);
-
+*/
