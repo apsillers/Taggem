@@ -1,13 +1,3 @@
-var app = require('http').createServer(handler)
-  , io = require('socket.io')
-  , fs = require('fs');
-
-io.set("transports", ["xhr-polling"]);
-
-console.log(process.env.OPENSHIFT_NODEJS_PORT, process.env.OPENSHIFT_NODEJS_IP);
-
-/*app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
-io.set('log level', 1);
 function handler (req, res) {
   var path = (req['url']=="/")?"/index.html":'/rot.min.js';
   fs.readFile(__dirname + path,
@@ -22,6 +12,18 @@ function handler (req, res) {
   });
 }
 
+/*var app = require('http').createServer(handler)
+  , io = require('socket.io')
+  , fs = require('fs');
+*/
+//io.set("transports", ["xhr-polling"]);
+
+//console.log(process.env.OPENSHIFT_NODEJS_PORT, process.env.OPENSHIFT_NODEJS_IP);
+
+//app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
+//io.set('log level', 1);
+
+/*
 var EventEmitter = require('events').EventEmitter;
 var changeListener = new EventEmitter();
 
