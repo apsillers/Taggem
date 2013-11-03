@@ -88,6 +88,28 @@ window.addEventListener("keydown", function(e) {
         if(expecting.action == false) { return; }
     }
 
+    if(expecting.direction &&
+       [ROT.VK_H, ROT.VK_L, ROT.VK_K, ROT.VK_J, ROT.VK_Y, ROT.VK_U, ROT.VK_B, ROT.VK_N].indexOf(code) != -1) {
+        if(command.action == null) { command.action = "move"; }
+
+        // if expecting an item but got a direction, pick a default item to use
+        if(expecting.item) {
+            command.itemNum = defaultItemForAction(command.action);
+        }
+
+        if (ROT.VK_H == code) { socket.emit(command.action, { x:-1, y:0, itemNum: command.itemNum }); }
+        if (ROT.VK_L == code) { socket.emit(command.action, { x:1, y:0, itemNum: command.itemNum }); }
+        if (ROT.VK_K == code) { socket.emit(command.action, { x:0, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_J == code) { socket.emit(command.action, { x:0, y:1, itemNum: command.itemNum }); }
+        
+        if (ROT.VK_Y == code) { socket.emit(command.action, { x:-1, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_U == code) { socket.emit(command.action, { x:1, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_B == code) { socket.emit(command.action, { x:-1, y:1, itemNum: command.itemNum }); }
+        if (ROT.VK_N == code) { socket.emit(command.action, { x:1, y:1, itemNum: command.itemNum }); }
+
+        command.clear();
+    }
+
     if(expecting.item) {
         command.itemNum = code - 48;
         expecting.item = false;
@@ -108,24 +130,6 @@ window.addEventListener("keydown", function(e) {
         }
 
         expecting.direction = true;
-
-        return;
-    }
-
-    if(expecting.direction) {
-        if(command.action == null) { command.action = "move"; }
-
-        if (ROT.VK_H == code) { socket.emit(command.action, { x:-1, y:0, itemNum: command.itemNum }); }
-        if (ROT.VK_L == code) { socket.emit(command.action, { x:1, y:0, itemNum: command.itemNum }); }
-        if (ROT.VK_K == code) { socket.emit(command.action, { x:0, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_J == code) { socket.emit(command.action, { x:0, y:1, itemNum: command.itemNum }); }
-        
-        if (ROT.VK_Y == code) { socket.emit(command.action, { x:-1, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_U == code) { socket.emit(command.action, { x:1, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_B == code) { socket.emit(command.action, { x:-1, y:1, itemNum: command.itemNum }); }
-        if (ROT.VK_N == code) { socket.emit(command.action, { x:1, y:1, itemNum: command.itemNum }); }
-
-        command.clear();
     }
 });
     
@@ -195,6 +199,16 @@ function showInventory() {
 function hideInventory() {
     inventoryUp = false;
     redraw({}, entities);
+}
+
+function defaultItemForAction(actionName) {
+    if(actionName == "shoot") {
+        for(var i=0; i<inventory.length; ++i) {
+            if(inventory[i].shootable) return i;
+        }
+    }
+
+    return null;
 }
 </script>
 </body>
