@@ -191,9 +191,13 @@ function drawMapChar(x,y,ch,fg,bg) {
 
 function showInventory() {
     inventoryUp = true;
+    var thirtySpaces = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    display.drawText(2, 3, "--------------------------------");
+    display.drawText(2, 4, ("| Inventory" + thirtySpaces).substr(0,30) + " |");
     for(var i=0; i<inventory.length; ++i) {
-        display.drawText(2,  i+4, i + ": " + inventory[i].name, 30);
+        display.drawText(2,  i+5, ("| " + i + ": " + inventory[i].name + thirtySpaces).substr(0,30) + " |", 34);
     }
+    display.drawText(2, i+5, "--------------------------------");
 }
 
 function hideInventory() {
