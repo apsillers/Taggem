@@ -10,13 +10,15 @@ ROT.DEFAULT_HEIGHT = 32;
 
 var id, level = 1;
 var mapData = [];
+var inventory = [];
+var inventoryUp = false;
 
 var display = new ROT.Display({fontSize:12});
 document.documentElement.appendChild(display.getContainer());
 
 var socket = io.connect('http://' + location.host);
 socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
-socket.on("map", function(mapUpdates) { redraw(mapUpdates, positions); });
+socket.on("map", function(mapUpdates) { redraw(mapUpdates, entities); });
 socket.on("pos", function(pos) { redraw({}, pos); });
 socket.on("id", function(myid) {
     id = myid;
@@ -25,6 +27,14 @@ socket.on("id", function(myid) {
     
     // init empty map
     initMapLevel(1);
+});
+
+socket.on("inventory", function(data) {
+    if(data.change == "add") {
+        inventory[data.slot] = data.item;
+    } else if(data.change == "remove") {
+        delete inventory[data.slot];
+    }
 });
 
 function initMapLevel(level) {
@@ -37,69 +47,89 @@ function initMapLevel(level) {
     }
 }
 
-var shotMode = false;
-var zapMode = false;
-var openMode = false;
-var closeMode = false;
-var dropMode = false;
+// what input are we expecting
+var expecting = {
+    clear: function() {
+        this.direction = true;
+        this.item = false;
+        this.action = true;
+    }
+}
+expecting.clear();
 
-// do we expect an item identifier
-var expectingItem = false;
-var itemNum = null;
+// what is the command input state
+var command = {
+    clear: function() {
+        this.action = null;
+        this.itemNum = null;
+        expecting.clear();
+    }
+}
 
 window.addEventListener("keydown", function(e) {
     var code = e.keyCode;
 
-    var action = "move";
-    var mine = "mine";
+    if(inventoryUp) { hideInventory(); return; }
 
-    if(shotMode) { action = "shoot"; }
-    if(zapMode) { action = "zap"; }
-    if(openMode) { action = "open"; }
-    if(closeMode) { action = "close"; }
+    if(expecting.action) {
+        if (ROT.VK_A == code) { socket.emit("mine"); }
+        else if (ROT.VK_I == code) { showInventory(); }
+        else if (ROT.VK_A == code) { socket.emit("mine"); }
+        else if (ROT.VK_Z == code) { command.action = "zap"; expecting.action = false; }
+        else if (ROT.VK_S == code) { command.action = "shoot"; expecting.action = false; expecting.item = true; }
+        else if (ROT.VK_O == code) { command.action = "open"; expecting.action = false; }
+        else if (ROT.VK_C == code) { command.action = "close"; expecting.action = false; }
+        else if (ROT.VK_D == code) { command.action = "drop"; expecting.action = false; expecting.item = true; }
 
-    if(expectingItem) {
-        itemNum = code - 48;
-        expectingItem = false;
+        else if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
+        else if (ROT.VK_COMMA == code) { socket.emit("pickup"); }
 
-        if(dropMode) {
-            socket.emit("drop", { itemNum: itemNum });
-        }
-    } else {
-        if (ROT.VK_H == code) { socket.emit(action, { x:-1, y:0, itemNum: itemNum }); }
-        if (ROT.VK_L == code) { socket.emit(action, { x:1, y:0, itemNum: itemNum }); }
-        if (ROT.VK_K == code) { socket.emit(action, { x:0, y:-1, itemNum: itemNum }); }
-        if (ROT.VK_J == code) { socket.emit(action, { x:0, y:1, itemNum: itemNum }); }
-        
-        if (ROT.VK_Y == code) { socket.emit(action, { x:-1, y:-1, itemNum: itemNum }); }
-        if (ROT.VK_U == code) { socket.emit(action, { x:1, y:-1, itemNum: itemNum }); }
-        if (ROT.VK_B == code) { socket.emit(action, { x:-1, y:1, itemNum: itemNum }); }
-        if (ROT.VK_N == code) { socket.emit(action, { x:1, y:1, itemNum: itemNum }); }
-
-        shotMode = false;
-        zapMode = false;
-        openMode = false;
-        closeMode = false;
-        dropMode = false;
+        // if an action key was pressed, we're done handling this press
+        if(expecting.action == false) { return; }
     }
 
-    
-    if (ROT.VK_A == code) { 
-	action = "mine";
-	socket.emit(action);
-	}
-    if (ROT.VK_Z == code) { zapMode = true; }
-    if (ROT.VK_S == code) { shotMode = true; expectingItem = true; console.log("shot mode"); }
-    if (ROT.VK_O == code) { openMode = true; }
-    if (ROT.VK_C == code) { closeMode = true; }
-    if (ROT.VK_D == code) { dropMode = true; expectingItem = true; }
-    
+    if(expecting.item) {
+        command.itemNum = code - 48;
+        expecting.item = false;
 
-    if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
-    if (ROT.VK_COMMA == code) { socket.emit("pickup"); }
+        // if invalid item, abort
+        if(command.itemNum > 9 || command.itemNum < 0) {
+            // feedback("Invalid item; must be a number");
+            command.clear();
+            return;
+        }
+
+        // if dropping item, command complete
+        if(command.action == "drop") {
+            socket.emit("drop", { itemNum: command.itemNum });
+            command.action = command.item = null;
+            command.clear();
+            return;
+        }
+
+        expecting.direction = true;
+
+        return;
+    }
+
+    if(expecting.direction) {
+        if(command.action == null) { command.action = "move"; }
+
+        if (ROT.VK_H == code) { socket.emit(command.action, { x:-1, y:0, itemNum: command.itemNum }); }
+        if (ROT.VK_L == code) { socket.emit(command.action, { x:1, y:0, itemNum: command.itemNum }); }
+        if (ROT.VK_K == code) { socket.emit(command.action, { x:0, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_J == code) { socket.emit(command.action, { x:0, y:1, itemNum: command.itemNum }); }
+        
+        if (ROT.VK_Y == code) { socket.emit(command.action, { x:-1, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_U == code) { socket.emit(command.action, { x:1, y:-1, itemNum: command.itemNum }); }
+        if (ROT.VK_B == code) { socket.emit(command.action, { x:-1, y:1, itemNum: command.itemNum }); }
+        if (ROT.VK_N == code) { socket.emit(command.action, { x:1, y:1, itemNum: command.itemNum }); }
+
+        command.clear();
+    }
 });
     
-var positions = {};
+var entities = {};
 function drawMap(mapUpdates) {
 
     if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
@@ -139,10 +169,10 @@ function drawEntities(posData) {
 }
 
 function redraw(map, posData) {
-    positions = posData;
+    entities = posData;
 
-    if(positions[id] != undefined) {
-        level = positions[id].z;
+    if(entities[id] != undefined) {
+        level = entities[id].z;
     }
 
     drawMap(map);
@@ -150,7 +180,21 @@ function redraw(map, posData) {
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
-    display.draw(x, y+2, ch, fg, bg);
+    if(!inventoryUp || ((x < 2 || x > 32) && (y < 4 || y > 14))) {
+        display.draw(x, y+2, ch, fg, bg);
+    }
+}
+
+function showInventory() {
+    inventoryUp = true;
+    for(var i=0; i<inventory.length; ++i) {
+        display.drawText(2,  i+4, i + ": " + inventory[i].name, 30);
+    }
+}
+
+function hideInventory() {
+    inventoryUp = false;
+    redraw({}, entities);
 }
 </script>
 </body>

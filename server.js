@@ -29,7 +29,14 @@ ROT.DEFAULT_HEIGHT = 30;
 var entities = {};
 var activeEntities = {};
 var entitiesByLocation = [];
-var inventories = {}; 
+var inventories = {};
+
+inventories.getOpenSlot = function(inv) {
+    for(var i=0; i<inv.length; ++i) {
+        if(inv[i] == undefined) { return i; }
+    }
+    return inv.length;
+}
 
 var genId;
 (function() {
@@ -179,16 +186,25 @@ var construct = require("entity_objects")(utilities, changeListener, entities, a
 // generate level 1 map
 utilities.generateMapLevel(1);
 
-var boulderpos = utilities.getValidPosition(1);
-new construct.Boulder({
-    id: genId(),
-    x: boulderpos.x,
-    y: boulderpos.y,
-    z: 1
-});
+
 for(var i=0; i<10; ++i) {
+    var boulderpos = utilities.getValidPosition(1);
+    new construct.Boulder({
+        id: genId(),
+        x: boulderpos.x,
+        y: boulderpos.y,
+        z: 1
+    });
+
     var wandpos = utilities.getValidPosition(1);
     new construct.FreezeWand({
+        id: genId(),
+        x: wandpos.x,
+        y: wandpos.y,
+        z: 1
+    });
+    wandpos = utilities.getValidPosition(1);
+    new construct.FireballWand({
         id: genId(),
         x: wandpos.x,
         y: wandpos.y,
@@ -299,9 +315,11 @@ io.sockets.on('connection', function (socket) {
         if(ebl[you.z] && ebl[you.z][you.x+","+you.y]) {
             // TODO: how to decide what to pick up?
             var pickups = ebl[you.z][you.x+","+you.y].filter(function(e) { return e.collectable; });
-            for(var i=0; i<pickups.length; ++i) {            
-                inventories[id].push(pickups[i]);
+            for(var i=0; i<pickups.length; ++i) {
+                var slot = inventories.getOpenSlot(inventories[id]);            
+                inventories[id][slot] = pickups[i];
                 pickups[i].remove();
+                socket.emit("inventory", { change: "add", slot: slot, item: pickups[i] });
             }
             //console.log("pickup", inventories[id]);
         }
@@ -315,6 +333,8 @@ io.sockets.on('connection', function (socket) {
             inventories[id][data.itemNum].place(you.z, you.x, you.y);
             delete inventories[id][data.itemNum];
         }
+
+        socket.emit("inventory", { change: "remove", slot: data.itemNum });
 
         changeListener.emit("change", [entities[id].z], ["pos"]);
     });
