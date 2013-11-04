@@ -5,13 +5,14 @@
 <script>
 
 ROT.RNG.setSeed(12345);
-ROT.DEFAULT_WIDTH = 80;
+ROT.DEFAULT_WIDTH = 83;
 ROT.DEFAULT_HEIGHT = 32;
 
 var id, level = 1;
 var mapData = [];
 var inventory = [];
 var inventoryUp = false;
+var health = 10;
 
 var display = new ROT.Display({fontSize:12});
 document.documentElement.appendChild(display.getContainer());
@@ -36,6 +37,17 @@ socket.on("inventory", function(data) {
         delete inventory[data.slot];
     }
 });
+
+socket.on("health", function(data) { health = data.value; drawHealth(data.value); });
+function drawHealth(value) {
+    for(var i=0; i < value; ++i) {
+        display.draw(82, 10-i, "o", "#F00", "#000");
+    }
+
+    for(;i<10; ++i) {
+        display.draw(82, 10-i, "-", "#F00", "#000");
+    }
+}
 
 function initMapLevel(level) {
     mapData[level] = [];
@@ -181,6 +193,8 @@ function redraw(map, posData) {
 
     drawMap(map);
     drawEntities(posData);
+
+    drawHealth(health);
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
