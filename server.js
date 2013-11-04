@@ -231,6 +231,7 @@ io.sockets.on('connection', function (socket) {
     inventories[id] = [];
 
     socket.emit('id', id);
+    socket.emit('health', { value: 10 });
 
     socket.on('open', function(data) { setOpen(id, data, true); });
     socket.on('close', function(data) { setOpen(id, data, false); });
@@ -355,6 +356,7 @@ io.sockets.on('connection', function (socket) {
             } else {
                 if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.filterEntities(id, entities)); }
                 if(types.indexOf('map') != -1) { socket.emit('map', utilities.filterMapData(id, mapData)); }
+                if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
             }
         }
     }
