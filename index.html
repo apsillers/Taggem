@@ -74,6 +74,78 @@ function initMapLevel(level) {
     }
 }
 
+// Translation between keys and directions
+var dirToVector = {};
+dirToVector[ROT.VK_H] = { x:-1, y:0};
+dirToVector[ROT.VK_L] = { x:1, y:0};
+dirToVector[ROT.VK_K] = { x:0, y:-1};
+dirToVector[ROT.VK_J] = { x:0, y:1};
+dirToVector[ROT.VK_Y] = { x:-1, y:-1};
+dirToVector[ROT.VK_U] = { x:1, y:-1};
+dirToVector[ROT.VK_B] = { x:-1, y:1};
+dirToVector[ROT.VK_N] = { x:1, y:1};
+
+// Concise list of commands
+var interpreters = {}
+interpreters[ROT.VK_I] = showInventory;
+interpreters[ROT.VK_Z] = DirCommand("zap");
+interpreters[ROT.VK_A] = DirCommand("mine");
+//interpreters[ROT.VK_S] = ItemDirCommand("shoot");
+interpreters[ROT.VK_O] = DirCommand("open");
+interpreters[ROT.VK_C] = DirCommand("close");
+//interpreters[ROT.VK_D] = ItemCommand("drop");
+// Include move commands
+for (moveKey in dirToVector) {
+  interpreters[moveKey] = (function (key) {
+      return function () { socket.emit("move", dirToVector[key]); }
+    })(moveKey);
+}
+// Include a clear command to abort a command
+interpreters[ROT.VK_ESCAPE] = function () { 
+    hideInventory(); 
+    interpCallback = defaultInterpreter;
+  }
+
+// Default key interpreting function
+var defaultInterpreter = function (key) {
+  if (key in interpreters) {
+    interpreters[key]();
+  }
+}
+
+// Currently active callback
+var interpCallback = defaultInterpreter;
+
+// To make sure the active call back always gets back to 
+// the default eventually, a callback must return something
+// truthy or the callback will revert.
+function makeCB(f) {
+  return function (k) {
+    if (!f(k)) {
+      interpCallback = defaultInterpreter;
+    }
+  }
+}
+
+// Class for actions taking only a direction
+function DirCommand (action) {
+  return function () {
+    interpCallback = makeCB( function (key) {
+        vec = dirToVector[key];
+        if (vec) {
+          socket.emit(action, vec);
+        }
+      });
+  }
+}
+
+window.addEventListener("keydown", function (e) {
+    var code = e.keyCode;
+    interpCallback(code);
+  });
+
+
+/*
 // what input are we expecting
 var expecting = {
     clear: function() {
@@ -159,6 +231,7 @@ window.addEventListener("keydown", function(e) {
         expecting.direction = true;
     }
 });
+*/
     
 var entities = {};
 function drawMap(mapUpdates) {
