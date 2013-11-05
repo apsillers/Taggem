@@ -1,5 +1,20 @@
 <html>
 <body>
+<div id="canvasContainer" style="float:left;"></div>
+<div style="float:left;">
+<div style="width:500px;">
+<ul>
+<li><b>h,j,k,l</b>: left, down, up, right</li>
+<li><b>i</b>: show inventory</li>
+<li><b>,</b> (comma): pick up items</li>
+<li><b>o</b> <i>[direction]</i>: open door in [direction]</li>
+<li><b>c</b> <i>[direction]</i>: close door in [direction]</li>
+<li><b>d</b> <i>[number]</i>: drop item in slot [number]</li>
+<li><b>s</b> <i>[number] [direction]</i>: shoot item [number] in [direction] (e.g., <b>s2h</b> shoots item in slot 5 to the left)</li>
+<li><b>s</b> <i>[direction]</i>: shoot the first shootable item in your inventory in [direction]</li>
+</ul>
+</div>
+</div>
 <script src="rot.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -15,9 +30,10 @@ var inventoryUp = false;
 var health = 10;
 
 var display = new ROT.Display({fontSize:12});
-document.documentElement.appendChild(display.getContainer());
+document.getElementById("canvasContainer").appendChild(display.getContainer());
 
-var socket = io.connect('http://' + location.hostname + ":8000");
+var socket = io.connect('//' + location.host);
+
 socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, entities); });
 socket.on("pos", function(pos) { redraw({}, pos); });
