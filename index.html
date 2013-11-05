@@ -32,7 +32,7 @@ var health = 10;
 var display = new ROT.Display({fontSize:12});
 document.getElementById("canvasContainer").appendChild(display.getContainer());
 
-var socket = io.connect('http://' + location.host);
+var socket = io.connect('//' + location.host);
 socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, entities); });
 socket.on("pos", function(pos) { redraw({}, pos); });
