@@ -31,6 +31,8 @@ var activeEntities = {};
 var entitiesByLocation = [];
 var inventories = {};
 
+var playerKnowledge = {};
+
 inventories.getOpenSlot = function(inv) {
     for(var i=0; i<inv.length; ++i) {
         if(inv[i] == undefined) { return i; }
@@ -166,6 +168,7 @@ var utilities = {
             copiedEntities[i] = {
                 x: inputEntities[i].x,
                 y: inputEntities[i].y,
+                z: inputEntities[i].z,
                 symbol: inputEntities[i].symbol,
                 color: inputEntities[i].color,
                 blocking: inputEntities[i].blocking
@@ -189,6 +192,21 @@ var utilities = {
         });
         
         return filteredMapData;
+    },
+
+    diffMapForPlayer: function(id, mapData) {
+        var mapDataDiff = {};
+        if(playerKnowledge[id].map[entities[id].z] == undefined) {
+            playerKnowledge[id].map[entities[id].z] = {};
+        }
+        var playerMap = playerKnowledge[id].map[entities[id].z];
+        for(var i in mapData) {
+            if(mapData[i] != playerMap[i]) {
+                playerMap[i] = mapData[i];
+                mapDataDiff[i] = mapData[i];
+            }
+        }
+        return mapDataDiff;
     }
 
 }
@@ -228,6 +246,12 @@ for(var i=0; i<10; ++i) {
 io.sockets.on('connection', function (socket) {
 
     var id = genId();
+
+    playerKnowledge[id] = {
+        map: [],
+        entities: {}
+    }
+
     var newPos = utilities.getValidPosition(1);
     new construct.Player({
         id: id,
@@ -360,13 +384,18 @@ io.sockets.on('connection', function (socket) {
 
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
             if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
+                var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
                 socket.emit('map+pos', {
                                          'pos': utilities.copyEntitiesForClient(utilities.filterEntities(id, entities)),
-                                         'map': utilities.filterMapData(id, mapData)
+                                         'map': mapDiff
                                         });
+                
             } else {
                 if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))); }
-                if(types.indexOf('map') != -1) { socket.emit('map', utilities.filterMapData(id, mapData)); }
+                if(types.indexOf('map') != -1) {
+                    var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
+                    socket.emit('map', mapDiff);
+                }
                 if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
             }
         }
@@ -378,6 +407,7 @@ io.sockets.on('connection', function (socket) {
         var level = entities[id].z;
         entities[id].remove();
         changeListener.removeListener("change", onChange);
+        delete playerKnowledge[id];
         changeListener.emit("change", [level], ['pos']);
     });
     
