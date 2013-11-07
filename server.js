@@ -167,7 +167,8 @@ var utilities = {
                 x: inputEntities[i].x,
                 y: inputEntities[i].y,
                 symbol: inputEntities[i].symbol,
-                color: inputEntities[i].color
+                color: inputEntities[i].color,
+                blocking: inputEntities[i].blocking
             }
         }
         return copiedEntities;
