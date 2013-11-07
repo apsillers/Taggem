@@ -100,7 +100,6 @@ var utilities = {
 	        z : level
         };
 
-
         for(var i=0; i<rooms.length; ++i) {
             rooms[i].getDoors(function(x, y) {
                 if(ROT.RNG.getUniform() > 0.8) return;
@@ -159,6 +158,19 @@ var utilities = {
         filteredEntities[id] = you;
         
         return filteredEntities;
+    },
+
+    copyEntitiesForClient: function(inputEntities) {
+        var copiedEntities = {};
+        for(var i in inputEntities) {
+            copiedEntities[i] = {
+                x: inputEntities[i].x,
+                y: inputEntities[i].y,
+                symbol: inputEntities[i].symbol,
+                color: inputEntities[i].color
+            }
+        }
+        return copiedEntities;
     },
 
     // return a dictionary with "x,y" keys that have the map values of
@@ -348,11 +360,11 @@ io.sockets.on('connection', function (socket) {
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
             if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
                 socket.emit('map+pos', {
-                                         'pos': utilities.filterEntities(id, entities),
+                                         'pos': utilities.copyEntitiesForClient(utilities.filterEntities(id, entities)),
                                          'map': utilities.filterMapData(id, mapData)
                                         });
             } else {
-                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.filterEntities(id, entities)); }
+                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))); }
                 if(types.indexOf('map') != -1) { socket.emit('map', utilities.filterMapData(id, mapData)); }
                 if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
             }
