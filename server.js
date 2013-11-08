@@ -215,6 +215,7 @@ var utilities = {
 
 // import entity constructors
 var construct = require("entity_objects")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData);
+var creatures = require("entity_creatures")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData, construct);
 
 // generate level 1 map
 utilities.generateMapLevel(1);
@@ -241,6 +242,15 @@ for(var i=0; i<10; ++i) {
         id: genId(),
         x: wandpos.x,
         y: wandpos.y,
+        z: 1
+    });
+
+    var bugpos = utilities.getValidPosition(1);
+    new creatures.GridBug({
+        id: genId(),
+        x: bugpos.x,
+        y: bugpos.y,
+        interval: 100,
         z: 1
     });
 }
