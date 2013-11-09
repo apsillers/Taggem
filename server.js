@@ -236,12 +236,16 @@ io.sockets.on('connection', function (socket) {
             if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
                 var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
                 socket.emit('map+pos', {
-                                         'pos': utilities.copyEntitiesForClient(utilities.filterEntities(id, entities)),
+                                         'pos': utilities.diffEntitiesForPlayer(id,
+                                                    utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
+                                                ),
                                          'map': mapDiff
                                         });
                 
             } else {
-                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))); }
+                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.diffEntitiesForPlayer(id,
+                                                                        utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
+                                                                    )); }
                 if(types.indexOf('map') != -1) {
                     var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
                     socket.emit('map', mapDiff);

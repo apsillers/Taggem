@@ -181,8 +181,17 @@ function drawMap(mapUpdates) {
 }
 
 function drawEntities(posData) {
-    for(var i in posData) {
-        var pos = posData[i];
+    var i;
+    for(i in posData["add"]) {
+        entities[i] = posData["add"][i];
+    }
+
+    for(i=0; i<posData["remove"].length; ++i) {
+        delete entities[posData["remove"][i]];
+    }
+
+    for(i in entities) {
+        var pos = entities[i];
 
         // if entity is a blocking entity (player, boulder), draw it
         if(pos.blocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
@@ -201,7 +210,6 @@ function drawEntities(posData) {
 }
 
 function redraw(map, posData) {
-    entities = posData;
 
     if(entities[id] != undefined) {
         level = entities[id].z;
