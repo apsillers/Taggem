@@ -165,16 +165,18 @@ var utilities = {
     copyEntitiesForClient: function(inputEntities) {
         var copiedEntities = {};
         for(var i in inputEntities) {
-            copiedEntities[i] = {
-                x: inputEntities[i].x,
-                y: inputEntities[i].y,
-                z: inputEntities[i].z,
-                symbol: inputEntities[i].symbol,
-                color: inputEntities[i].color,
-                blocking: inputEntities[i].blocking
-            }
+            copiedEntities[i] = utilities.copyEntityForClient(inputEntities[i]);
         }
         return copiedEntities;
+    },
+
+    copyEntityForClient: function(inputEntity) {
+        var fields = ['x','y','z','symbol','color','blocking','name'];
+        var copiedEntity = {};
+        for(var i=0; i<fields.length; ++i) {
+            copiedEntity[fields[i]] = inputEntity[fields[i]];
+        }
+        return copiedEntity;
     },
 
     // return a dictionary with "x,y" keys that have the map values of
@@ -248,7 +250,7 @@ for(var i=0; i<10; ++i) {
         id: genId(),
         x: bugpos.x,
         y: bugpos.y,
-        interval: 100,
+        interval: 1000,
         z: 1
     });
 }
