@@ -40,6 +40,8 @@ socket.on("id", function(myid) {
     id = myid;
 
     display.clear();
+
+    entities = {};
     
     // init empty map
     initMapLevel(1);
@@ -179,16 +181,24 @@ function drawMap(mapUpdates) {
     }
 }
 
-function drawEntities(posData) {
+function updateEntities(posData) {
     var i;
-    for(i in posData["add"]) {
-        entities[i] = posData["add"][i];
+    if(posData.clear) { entities = {}; }
+
+    if(posData["add"]) {
+        for(i in posData["add"]) {
+            entities[i] = posData["add"][i];
+        }
     }
 
-    for(i=0; i<posData["remove"].length; ++i) {
-        delete entities[posData["remove"][i]];
+    if(posData["remove"]) {
+        for(i=0; i<posData["remove"].length; ++i) {
+            delete entities[posData["remove"][i]];
+        }
     }
+}
 
+function drawEntities() {
     for(i in entities) {
         var pos = entities[i];
 
@@ -197,8 +207,8 @@ function drawEntities(posData) {
         else {
             // if entity is non-blocking, defer to any blocking entities on the space
             var hasBlocking = false;
-            for(var j in posData) {
-                if(posData[j].blocking && posData[j].x == pos.x && posData[j].y == pos.y) {
+            for(var j in entities) {
+                if(entities[j].blocking && entities[j].x == pos.x && entities[j].y == pos.y) {
                     hasBlocking = true;
                     break;
                 }
@@ -210,12 +220,14 @@ function drawEntities(posData) {
 
 function redraw(map, posData) {
 
+    updateEntities(posData);
+
     if(entities[id] != undefined) {
         level = entities[id].z;
     }
 
     drawMap(map);
-    drawEntities(posData);
+    drawEntities();
 
     drawHealth(health);
 }
