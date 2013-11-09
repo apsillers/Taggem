@@ -32,7 +32,6 @@ var entities = {};
 var activeEntities = {};
 var entitiesByLocation = [];
 var inventories = {};
-
 var playerKnowledge = {};
 
 inventories.getOpenSlot = function(inv) {
@@ -50,168 +49,7 @@ var genId;
 
 var mapData = [];
 
-var utilities = {
-
-    genId: genId,
-
-    getValidPosition: function(level) {
-      utilities.ensureLevelExists(level);
-      do {
-        x = Math.floor(Math.random() * ROT.DEFAULT_WIDTH);
-        y = Math.floor(Math.random() * ROT.DEFAULT_HEIGHT);
-        // reject solid walls and light-blocking entities
-      } while (mapData[level][x][y] ||
-               utilities.getEntitiesByLocation(level, x, y).some(function(e) { return e.blocksLight; }))
-      return {x: x, y: y}
-    },
-
-    ensureLevelExists: function(level) {
-      if (typeof mapData[level] == 'undefined') {
-        utilities.generateMapLevel(level);
-      }
-    },
-
-    generateMapLevel: function(level) {
-        mapData[level] = [];
-        entitiesByLocation[level] = {};
-        mapGenerator = new ROT.Map.Digger();
-        mapGenerator.create(function(x, y, type) {
-            if(typeof mapData[level][x] == 'undefined') mapData[level][x] = [];
-            mapData[level][x][y] = type;
-        });
-        
-        var rooms = mapGenerator.getRooms();
-        var upStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
-        var downStairs = rooms[Math.floor(ROT.RNG.getUniform() * rooms.length)];
-        
-        var upId = genId();
-        entities[upId] = {
-	        id : upId,
-	        symbol : '<',
-	        color: "#FF0",
-	        y : Math.floor(upStairs.getTop() + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
-	        x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
-	        z : level
-        };
-
-        var downId = genId();
-        entities[downId] = {
-	        id : downId,
-	        symbol : '>',
-	        color: "#FF0",
-	        y : Math.floor(upStairs.getTop() - 1 + ((-upStairs.getTop() + upStairs.getBottom()) / 2)),
-	        x : Math.floor(upStairs.getLeft() + ((-upStairs.getLeft() + upStairs.getRight()) / 2)),
-	        z : level
-        };
-
-        for(var i=0; i<rooms.length; ++i) {
-            rooms[i].getDoors(function(x, y) {
-                if(ROT.RNG.getUniform() > 0.8) return;
-                var otherSym = '|';
-                if (x == rooms[i].getLeft() - 1 || 
-                    x == rooms[i].getRight() + 1)
-                  otherSym = '-';
-                new construct.Door({
-                    id: genId(),
-                    otherSymbol: otherSym,
-                    isOpen: false,
-                    x: x,
-                    y: y,
-                    z: level
-                });
-            });
-        }
-    },
-
-    getEntitiesByLocation: function(z,x,y,entities) {
-        if(typeof entitiesByLocation[z] != 'undefined' && typeof entitiesByLocation[z][x+","+y] != 'undefined') {
-            return entitiesByLocation[z][x+","+y].slice();
-        } else {
-            return [];
-        }
-    },
-
-    // given a master set of entities and an entity id,
-    // return the set of entires visible to the entity with the given id
-    filterEntities: function(id, inputEntities) {
-        var you = inputEntities[id];
-        var filteredEntities = {}
-
-        var fov = new ROT.FOV.PreciseShadowcasting(
-            lightPassesOnLevel(inputEntities, you.z));
-
-        var item;
-        fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-            items = utilities.getEntitiesByLocation(you.z, x, y, inputEntities)
-            for(var i=0; i<items.length; ++i) {
-                //if(items[i].knownTo) console.log(items[i].knownTo, items[i].knownTo.indexOf(you.id) != -1);
-                if(!items[i].invisible && (!items[i].hidden || (items[i].knownTo && items[i].knownTo.indexOf(you.id) != -1))) {
-                    filteredEntities[items[i].id] = items[i];
-                }
-            }
-        });
-        
-        // psychic players see all players on the level
-        if(you.psychic) {
-            for(var i in inputEntities) {
-                var e = inputEntities[i];
-                if(e.hasBrain && e.z == you.z) { filteredEntities[e.id] = e; }
-            }
-        }   
-
-        filteredEntities[id] = you;
-        
-        return filteredEntities;
-    },
-
-    copyEntitiesForClient: function(inputEntities) {
-        var copiedEntities = {};
-        for(var i in inputEntities) {
-            copiedEntities[i] = {
-                x: inputEntities[i].x,
-                y: inputEntities[i].y,
-                z: inputEntities[i].z,
-                symbol: inputEntities[i].symbol,
-                color: inputEntities[i].color,
-                blocking: inputEntities[i].blocking
-            }
-        }
-        return copiedEntities;
-    },
-
-    // return a dictionary with "x,y" keys that have the map values of
-    // all maps spaces visible to the player with the given id
-    filterMapData: function(id, inputMapData) {
-        var you = entities[id];
-        var filteredMapData = {};
-        
-        var fov = new ROT.FOV.PreciseShadowcasting(
-            lightPassesOnLevel(entities, you.z));
-
-        var item;
-        fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
-            filteredMapData[x+","+y] = inputMapData[you.z][x][y];
-        });
-        
-        return filteredMapData;
-    },
-
-    diffMapForPlayer: function(id, mapData) {
-        var mapDataDiff = {};
-        if(playerKnowledge[id].map[entities[id].z] == undefined) {
-            playerKnowledge[id].map[entities[id].z] = {};
-        }
-        var playerMap = playerKnowledge[id].map[entities[id].z];
-        for(var i in mapData) {
-            if(mapData[i] != playerMap[i]) {
-                playerMap[i] = mapData[i];
-                mapDataDiff[i] = mapData[i];
-            }
-        }
-        return mapDataDiff;
-    }
-
-}
+var utilities = require("utilities")(changeListener, mapData, entities, activeEntities, entitiesByLocation, genId, playerKnowledge);
 
 // import entity constructors
 var construct = require("entity_objects")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData);
@@ -250,7 +88,7 @@ for(var i=0; i<10; ++i) {
         id: genId(),
         x: bugpos.x,
         y: bugpos.y,
-        interval: 100,
+        interval: 1000,
         z: 1
     });
 }
@@ -429,23 +267,6 @@ io.sockets.on('connection', function (socket) {
 function colorFromId(id) {
     return ["#F00", "#0F0", "#00F", "#FF0", "#F0F", "#0FF"][id % 6];
 }
-
-
-var lightPassesOnLevel = function (ents, level) {
-    // determines if light can pass through a given (x,y)
-    return function(x, y) {
-        if (mapData[level] == undefined ||
-            mapData[level][x] == undefined || 
-            mapData[level][x][y] != 0) { return false; }
-        here = utilities.getEntitiesByLocation(level, x, y, ents);
-        for (var i = 0; i < here.length; i++) {
-          if (here[i].blocksLight) {
-            return false;
-          }
-        }
-        return true;
-    }
-};
 
 // make active entities act (shots, monsters, time bombs, etc.)
 var worldPeriod = 100;
