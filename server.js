@@ -265,7 +265,7 @@ io.sockets.on('connection', function (socket) {
         changeListener.emit("change", [level], ['pos']);
     });
     
-    changeListener.emit("change");
+    changeListener.emit("change", [entities[id].z], ["pos", "map"]);
 });
 
 function colorFromId(id) {
