@@ -83,12 +83,12 @@ for(var i=0; i<10; ++i) {
     });
 
     var bugpos = utilities.getValidPosition(1);
-    /*new creatures.GridBug({
+    new creatures.GridBug({
         id: genId(),
         x: bugpos.x,
         y: bugpos.y,
         z: 1
-    });*/
+    });
 }
 
 io.sockets.on('connection', function (socket) {
