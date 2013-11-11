@@ -34,14 +34,14 @@ document.getElementById("canvasContainer").appendChild(display.getContainer());
 
 var socket = io.connect('//' + location.host);
 socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
-socket.on("map", function(mapUpdates) { redraw(mapUpdates, entities); });
+socket.on("map", function(mapUpdates) { redraw(mapUpdates, {}); });
 socket.on("pos", function(pos) { redraw({}, pos); });
 socket.on("id", function(myid) {
     id = myid;
 
     display.clear();
 
-    entities = {};
+    entities[1] = {};
     
     // init empty map
     initMapLevel(1);
@@ -162,7 +162,7 @@ window.addEventListener("keydown", function(e) {
     }
 });
     
-var entities = {};
+var entities = [];
 function drawMap(mapUpdates) {
 
     if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
@@ -183,32 +183,32 @@ function drawMap(mapUpdates) {
 
 function updateEntities(posData) {
     var i;
-    if(posData.clear) { entities = {}; }
+    if(posData.clear) { entities[level] = {}; }
 
     if(posData["add"]) {
         for(i in posData["add"]) {
-            entities[i] = posData["add"][i];
+            entities[level][i] = posData["add"][i];
         }
     }
 
     if(posData["remove"]) {
         for(i=0; i<posData["remove"].length; ++i) {
-            delete entities[posData["remove"][i]];
+            delete entities[level][posData["remove"][i]];
         }
     }
 }
 
 function drawEntities() {
-    for(i in entities) {
-        var pos = entities[i];
+    for(i in entities[level]) {
+        var pos = entities[level][i];
 
         // if entity is a blocking entity (player, boulder), draw it
         if(pos.blocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
         else {
             // if entity is non-blocking, defer to any blocking entities on the space
             var hasBlocking = false;
-            for(var j in entities) {
-                if(entities[j].blocking && entities[j].x == pos.x && entities[j].y == pos.y) {
+            for(var j in entities[level]) {
+                if(entities[level][j].blocking && entities[level][j].x == pos.x && entities[level][j].y == pos.y) {
                     hasBlocking = true;
                     break;
                 }
@@ -220,11 +220,12 @@ function drawEntities() {
 
 function redraw(map, posData) {
 
-    updateEntities(posData);
-
-    if(entities[id] != undefined) {
-        level = entities[id].z;
+    if(posData["add"] && posData["add"][id] != undefined) {
+        level = posData["add"][id].z;
+        if(entities[level] == undefined) { entities[level] = {}; }
     }
+
+    updateEntities(posData);
 
     drawMap(map);
     drawEntities();
@@ -251,7 +252,7 @@ function showInventory() {
 
 function hideInventory() {
     inventoryUp = false;
-    redraw({}, entities);
+    redraw({}, {});
 }
 
 function defaultItemForAction(actionName) {
