@@ -96,22 +96,41 @@ dirToVector[ROT.VK_U] = { x:1, y:-1};
 dirToVector[ROT.VK_B] = { x:-1, y:1};
 dirToVector[ROT.VK_N] = { x:1, y:1};
 
+// Translation between keys and item numbers
+var keyToItem = {};
+for (i = 0; i < 10; i++) {
+  keyToItem[i + "0".charCodeAt(0)] = i;
+}
+
 // Concise list of commands
 var interpreters = {}
-interpreters[ROT.VK_I] = showInventory;
-interpreters[ROT.VK_Z] = DirCommand("zap");
-interpreters[ROT.VK_A] = DirCommand("mine");
-//interpreters[ROT.VK_S] = ItemDirCommand("shoot");
-interpreters[ROT.VK_O] = DirCommand("open");
-interpreters[ROT.VK_C] = DirCommand("close");
-//interpreters[ROT.VK_D] = ItemCommand("drop");
+interpreters[ROT.VK_I]     = 
+  function () {
+    showInventory();
+    interpCallback = function (key) {
+      hideInventory();
+      interpCallback = defaultInterpreter;
+      if (key != ROT.VK_I) {
+        defaultInterpreter(key);
+      }
+    };
+  };
+interpreters[ROT.VK_Z]     = DirCommand("zap");
+interpreters[ROT.VK_A]     = DirCommand("mine");
+interpreters[ROT.VK_S]     = ItemDirCommand("shoot");
+interpreters[ROT.VK_O]     = DirCommand("open");
+interpreters[ROT.VK_C]     = DirCommand("close");
+interpreters[ROT.VK_COMMA] = Command("pickup");
+interpreters[ROT.VK_D]     = ItemCommand("drop");
+
 // Include move commands
 for (moveKey in dirToVector) {
   interpreters[moveKey] = (function (key) {
       return function () { socket.emit("move", dirToVector[key]); }
     })(moveKey);
 }
-// Include a clear command to abort a command
+
+// Include a clear command to abort any other command
 interpreters[ROT.VK_ESCAPE] = function () { 
     hideInventory(); 
     interpCallback = defaultInterpreter;
@@ -138,6 +157,12 @@ function makeCB(f) {
   }
 }
 
+// Class for actions taking no parameters
+function Command (action) {
+  return function () {
+    socket.emit(action);
+  }
+}
 // Class for actions taking only a direction
 function DirCommand (action) {
   return function () {
@@ -149,101 +174,43 @@ function DirCommand (action) {
       });
   }
 }
+// Class for actions taking an item
+function ItemCommand (action) {
+  return function () {
+    interpCallback = makeCB( function (key) {
+        item = keyToItem[key];
+        if (item <= 9 && item >= 0) {
+          socket.emit(action, {"itemNum":item});
+        }
+      });
+  }
+}
+// Class for actions taking an item and a direction
+function ItemDirCommand (action) {
+  return function () {
+    interpCallback = makeCB( function (key) {
+        item = keyToItem[key];
+        if (item <= 9 && item >= 0) {
+          interpCallback = makeCB( function (key) {
+              vec = dirToVector[key];
+              if (vec) {
+                vec.itemNum = item;
+                socket.emit(action, vec);
+              }
+            });
+          return true; // Don't go back to default handler yet
+        }
+      });
+  }
+}
+
 
 window.addEventListener("keydown", function (e) {
     var code = e.keyCode;
     interpCallback(code);
   });
 
-
-/*
-// what input are we expecting
-var expecting = {
-    clear: function() {
-        this.direction = true;
-        this.item = false;
-        this.action = true;
-    }
-}
-expecting.clear();
-
-// what is the command input state
-var command = {
-    clear: function() {
-        this.action = null;
-        this.itemNum = null;
-        expecting.clear();
-    }
-}
-
-window.addEventListener("keydown", function(e) {
-    var code = e.keyCode;
-
-    if(inventoryUp) { hideInventory(); return; }
-
-    if(expecting.action) {
-        if (ROT.VK_A == code) { socket.emit("mine"); }
-        else if (ROT.VK_I == code) { showInventory(); }
-        else if (ROT.VK_A == code) { socket.emit("mine"); }
-        else if (ROT.VK_Z == code) { command.action = "zap"; expecting.action = false; }
-        else if (ROT.VK_S == code) { command.action = "shoot"; expecting.action = false; expecting.item = true; }
-        else if (ROT.VK_O == code) { command.action = "open"; expecting.action = false; }
-        else if (ROT.VK_C == code) { command.action = "close"; expecting.action = false; }
-        else if (ROT.VK_D == code) { command.action = "drop"; expecting.action = false; expecting.item = true; }
-
-        else if (ROT.VK_PERIOD == code && e.shiftKey) { socket.emit("move", { x:0, y:0, z:1 }); }
-        else if (ROT.VK_COMMA == code) { socket.emit("pickup"); }
-
-        // if an action key was pressed, we're done handling this press
-        if(expecting.action == false) { return; }
-    }
-
-    if(expecting.direction &&
-       [ROT.VK_H, ROT.VK_L, ROT.VK_K, ROT.VK_J, ROT.VK_Y, ROT.VK_U, ROT.VK_B, ROT.VK_N].indexOf(code) != -1) {
-        if(command.action == null) { command.action = "move"; }
-
-        // if expecting an item but got a direction, pick a default item to use
-        if(expecting.item) {
-            command.itemNum = defaultItemForAction(command.action);
-        }
-
-        if (ROT.VK_H == code) { socket.emit(command.action, { x:-1, y:0, itemNum: command.itemNum }); }
-        if (ROT.VK_L == code) { socket.emit(command.action, { x:1, y:0, itemNum: command.itemNum }); }
-        if (ROT.VK_K == code) { socket.emit(command.action, { x:0, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_J == code) { socket.emit(command.action, { x:0, y:1, itemNum: command.itemNum }); }
-        
-        if (ROT.VK_Y == code) { socket.emit(command.action, { x:-1, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_U == code) { socket.emit(command.action, { x:1, y:-1, itemNum: command.itemNum }); }
-        if (ROT.VK_B == code) { socket.emit(command.action, { x:-1, y:1, itemNum: command.itemNum }); }
-        if (ROT.VK_N == code) { socket.emit(command.action, { x:1, y:1, itemNum: command.itemNum }); }
-
-        command.clear();
-    }
-
-    if(expecting.item) {
-        command.itemNum = code - 48;
-        expecting.item = false;
-
-        // if invalid item, abort
-        if(command.itemNum > 9 || command.itemNum < 0) {
-            // feedback("Invalid item; must be a number");
-            command.clear();
-            return;
-        }
-
-        // if dropping item, command complete
-        if(command.action == "drop") {
-            socket.emit("drop", { itemNum: command.itemNum });
-            command.action = command.item = null;
-            command.clear();
-            return;
-        }
-
-        expecting.direction = true;
-    }
-});
-*/
-    
+   
 function drawMap(mapUpdates) {
 
     if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
