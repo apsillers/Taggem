@@ -19,6 +19,7 @@ function handler (req, res) {
 
 var EventEmitter = require('events').EventEmitter;
 var changeListener = new EventEmitter();
+var outputListener = new EventEmitter();
 
 var ROT = require("rot");
 
@@ -47,11 +48,11 @@ var genId;
 
 var mapData = [];
 
-var utilities = require("utilities")(changeListener, mapData, entities, activeEntities, entitiesByLocation, genId, playerKnowledge);
+var utilities = require("utilities")(changeListener, outputListener, mapData, entities, activeEntities, entitiesByLocation, genId, playerKnowledge);
 
 // import entity constructors
-var construct = require("entity_objects")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData);
-var creatures = require("entity_creatures")(utilities, changeListener, entities, activeEntities, entitiesByLocation, mapData, construct);
+var construct = require("entity_objects")(utilities, changeListener, outputListener, entities, activeEntities, entitiesByLocation, mapData);
+var creatures = require("entity_creatures")(utilities, changeListener, outputListener, entities, activeEntities, entitiesByLocation, mapData, construct);
 
 // generate level 1 map
 utilities.generateMapLevel(1);
@@ -107,7 +108,8 @@ io.sockets.on('connection', function (socket) {
         x: newPos.x,
         y: newPos.y,
         z: 1,
-        health: 10
+        health: 10,
+        socket: socket
     });
 
     inventories[id] = [];
@@ -263,6 +265,12 @@ io.sockets.on('connection', function (socket) {
     });
     
     changeListener.emit("change", [entities[id].z], ["pos", "map"]);
+
+    outputListener.on("output", function(options) {
+        if(options.targets == undefined || options.targets.indexOf(id) != -1) {
+            socket.emit("output", options.message)
+        }
+    });
 });
 
 function colorFromId(id) {
