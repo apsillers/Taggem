@@ -88,7 +88,6 @@ for(var i=0; i<10; ++i) {
         id: genId(),
         x: bugpos.x,
         y: bugpos.y,
-        interval: 1000,
         z: 1
     });
 }
