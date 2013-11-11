@@ -110,8 +110,7 @@ io.sockets.on('connection', function (socket) {
         x: newPos.x,
         y: newPos.y,
         z: 1,
-        health: 10,
-        socket: socket
+        health: 10
     });
 
     inventories[id] = [];
@@ -262,17 +261,21 @@ io.sockets.on('connection', function (socket) {
         var level = entities[id].z;
         entities[id].remove();
         changeListener.removeListener("change", onChange);
+        outputListener.removeListener("output", outputHandler);
         delete playerKnowledge[id];
         changeListener.emit("change", [level], ['pos']);
     });
     
     changeListener.emit("change", [entities[id].z], ["pos", "map"]);
 
-    outputListener.on("output", function(options) {
-        if(options.targets == undefined || options.targets.indexOf(id) != -1) {
-            socket.emit("output", options.message)
+    outputListener.on("output", outputHandler);
+    function outputHandler(options) {
+        if((options.omitList == undefined || options.omitList.indexOf(id) == -1) &&
+           (options.targets == undefined || options.targets.indexOf(id) != -1) &&
+           (!options.visual || entities[id].canSee(options.point)))  {
+            socket.emit("output", options.message);
         }
-    });
+    }
 });
 
 function colorFromId(id) {
