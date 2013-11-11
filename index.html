@@ -1,6 +1,6 @@
 <html>
 <body>
-<div id="canvasContainer" style="float:left;"></div>
+<div id="canvasContainer" style="float:left; border: thick solid black;"></div>
 <div style="float:left;">
 <div style="width:500px;">
 <ul>
@@ -20,7 +20,7 @@
 <script>
 
 ROT.RNG.setSeed(12345);
-ROT.DEFAULT_WIDTH = 83;
+ROT.DEFAULT_WIDTH = 123;
 ROT.DEFAULT_HEIGHT = 32;
 
 var id, level = 1;
@@ -28,6 +28,7 @@ var mapData = [];
 var inventory = [];
 var inventoryUp = false;
 var health = 10;
+var entities = [];
 
 var display = new ROT.Display({fontSize:12});
 document.getElementById("canvasContainer").appendChild(display.getContainer());
@@ -42,7 +43,15 @@ socket.on("id", function(myid) {
 
     display.clear();
 
+    level = 1;
+    mapData = [];
+    inventory = [];
+    inventoryUp = false;
+    health = 10;
+    entities = [];
+
     entities[1] = {};
+    messages = [];
     
     // init empty map
     initMapLevel(1);
@@ -163,7 +172,6 @@ window.addEventListener("keydown", function(e) {
     }
 });
     
-var entities = [];
 function drawMap(mapUpdates) {
 
     if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
@@ -232,6 +240,8 @@ function redraw(map, posData) {
     drawEntities();
 
     drawHealth(health);
+
+    drawMessages();
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
@@ -259,11 +269,26 @@ function hideInventory() {
 function defaultItemForAction(actionName) {
     if(actionName == "shoot") {
         for(var i=0; i<inventory.length; ++i) {
-            if(inventory[i].shootable) return i;
+            if(inventory[i] && inventory[i].shootable) return i;
         }
     }
 
     return null;
+}
+
+var messages = [];
+function showMessage(m) {
+    messages.push(m);
+    drawMessages();
+}
+
+socket.on("output", function(m) {
+    showMessage(m);
+});
+
+function drawMessages() {
+    display.drawText(84, 0, messages.join("\n"), 39);
+
 }
 </script>
 </body>
