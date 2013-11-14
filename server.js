@@ -91,6 +91,14 @@ for(var i=0; i<10; ++i) {
         y: bugpos.y,
         z: 1
     });
+
+    var bugpos = utilities.getValidPosition(1);
+    new creatures.Nymph({
+        id: genId(),
+        x: bugpos.x,
+        y: bugpos.y,
+        z: 1
+    });
 }
 
 io.sockets.on('connection', function (socket) {
@@ -113,13 +121,16 @@ io.sockets.on('connection', function (socket) {
         health: 10
     });
 
+    var player = entities[id];
+
     inventories[id] = [];
+    player.inventory = inventories[id];
 
     socket.emit('id', id);
     socket.emit('health', { value: 10 });
 
-    socket.on('open', function(data) { setOpen(id, data, true); });
-    socket.on('close', function(data) { setOpen(id, data, false); });
+    socket.on('open', function(data) { player.act = function() { setOpen(id, data, true); delete this.act; }; });
+    socket.on('close', function(data) { player.act = function() { setOpen(id, data, false); delete this.act; }; });
 
     function setOpen(id, data, doOpen) {
       var you = entities[id];
@@ -138,50 +149,61 @@ io.sockets.on('connection', function (socket) {
       changeListener.emit("change", [entities[id].z], ['pos', 'map']);
     }
 
-    socket.on('move', function(data) { entities[id].step(data); });
+    socket.on('move', function(data) { player.act = function() { entities[id].step(data); delete this.act; }; });
     
     socket.on("zap", function(data) {
-	    new construct.Pit({
-	        id: genId(),
-            knownTo: [id],
-	        x: entities[id].x + (data.x * 4),
-	        y: entities[id].y + (data.y * 4),
-	        z: entities[id].z,
-	    });
-        changeListener.emit("change", [entities[id].z], ['pos']);
+        player.act = function() {
+	        new construct.Pit({
+	            id: genId(),
+                knownTo: [id],
+	            x: entities[id].x + (data.x * 4),
+	            y: entities[id].y + (data.y * 4),
+	            z: entities[id].z,
+	        });
+            changeListener.emit("change", [entities[id].z], ['pos']);
+
+            delete this.act;
+        };
     });
     
     socket.on("mine", function(data) {
-	    var myIds = [];
-	    var counter = 0;
-	    for(var i = -1; i <= 1; i++) {
-	        for(var j = -1; j <= 1; j++) {
-		        var mineId = genId();
+        player.act = function() {
+	        var myIds = [];
+	        var counter = 0;
+	        for(var i = -1; i <= 1; i++) {
+	            for(var j = -1; j <= 1; j++) {
+		            var mineId = genId();
 		
-		        myIds[counter] = mineId;
-		        counter = counter + 1;
+		            myIds[counter] = mineId;
+		            counter = counter + 1;
 
-		        new construct.Mine({
-		            id : mineId,
-		            x: entities[id].x + i,
-		            y: entities[id].y + j,
-		            z: entities[id].z,
-		            sisterMineIds: myIds
-		        });
-            }
-	    }
+		            new construct.Mine({
+		                id : mineId,
+		                x: entities[id].x + i,
+		                y: entities[id].y + j,
+		                z: entities[id].z,
+		                sisterMineIds: myIds
+		            });
+                }
+	        }
+
+            delete this.act;
+        };
 
     });
 
     socket.on("shoot", function(data) {
-        var shotItem = inventories[id][data.itemNum];
+        player.act = function() {
+            var shotItem = inventories[id][data.itemNum];
 
-        if(shotItem && shotItem.onFire) {
-            shotItem.onFire(id, data);
-        } else {
-            //TODO: report failure to user
-            //console.log("shot failed");
-        }
+            if(shotItem && shotItem.onFire) {
+                shotItem.onFire(id, data);
+            } else {
+                //TODO: report failure to user
+                //console.log("shot failed");
+            }
+            delete this.act;
+        };
     });
 
     socket.on("telepathy", function(data) {
@@ -197,61 +219,62 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on("pickup", function(data) {
-        var you = entities[id];
-        var ebl = entitiesByLocation;
-        // get item at player location
-        if(ebl[you.z] && ebl[you.z][you.x+","+you.y]) {
-            // TODO: how to decide what to pick up?
-            var pickups = ebl[you.z][you.x+","+you.y].filter(function(e) { return e.collectable; });
-            for(var i=0; i<pickups.length; ++i) {
-                var slot = inventories.getOpenSlot(inventories[id]);            
-                inventories[id][slot] = pickups[i];
-                pickups[i].remove();
-                socket.emit("inventory", { change: "add", slot: slot, item: pickups[i] });
+        player.act = function() {
+            var you = entities[id];
+            var ebl = entitiesByLocation;
+            // get item at player location
+            if(ebl[you.z] && ebl[you.z][you.x+","+you.y]) {
+                // TODO: how to decide what to pick up?
+                var pickups = ebl[you.z][you.x+","+you.y].filter(function(e) { return e.collectable; });
+                for(var i=0; i<pickups.length; ++i) {
+                    var slot = inventories.getOpenSlot(inventories[id]);            
+                    inventories[id][slot] = pickups[i];
+                    pickups[i].remove();
+                    socket.emit("inventory", { change: "add", slot: slot, item: pickups[i] });
+                }
+                //console.log("pickup", inventories[id]);
             }
-            //console.log("pickup", inventories[id]);
-        }
 
-        changeListener.emit("change", [entities[id].z], ["pos"]);
+            changeListener.emit("change", [entities[id].z], ["pos"]);
+
+            delete this.act;
+        };
     });
 
     socket.on("drop", function(data) {
-        var you = entities[id];
-        if(inventories[id][data.itemNum] != undefined) {
-            inventories[id][data.itemNum].place(you.z, you.x, you.y);
-            delete inventories[id][data.itemNum];
+        player.act = function() {
+            var you = entities[id];
+            if(inventories[id][data.itemNum] != undefined) {
+                inventories[id][data.itemNum].place(you.z, you.x, you.y);
+                delete inventories[id][data.itemNum];
+            }
+
+            socket.emit("inventory", { change: "remove", slot: data.itemNum });
+
+            changeListener.emit("change", [entities[id].z], ["pos"]);
+
+            delete this.act;
         }
-
-        socket.emit("inventory", { change: "remove", slot: data.itemNum });
-
-        changeListener.emit("change", [entities[id].z], ["pos"]);
     });
 
     // this should fire whenever a change happens to the world that may implicate a client redraw
     // this could be limited at least to level-specific activity, or even more localized
-    function onChange(levels, types) {
+    function onChange(levels, types, players, msg) {
         if(entities[id] == undefined) { return; }
 
+        // if this message is not for you, ignore it
+        if(players != undefined && players.indexOf(id) == -1) { return; }
+
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
-            if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
+            if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.diffEntitiesForPlayer(id,
+                                                                    utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
+                                                                )); }
+            if(types.indexOf('map') != -1) {
                 var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
-                socket.emit('map+pos', {
-                                         'pos': utilities.diffEntitiesForPlayer(id,
-                                                    utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
-                                                ),
-                                         'map': mapDiff
-                                        });
-                
-            } else {
-                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.diffEntitiesForPlayer(id,
-                                                                        utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
-                                                                    )); }
-                if(types.indexOf('map') != -1) {
-                    var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
-                    socket.emit('map', mapDiff);
-                }
-                if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
+                socket.emit('map', mapDiff);
             }
+            if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
+            if(types.indexOf('inventory') != -1) { socket.emit('inventory', msg); }
         }
     }
     changeListener.on("change", onChange);
@@ -283,14 +306,14 @@ function colorFromId(id) {
 }
 
 // make active entities act (shots, monsters, time bombs, etc.)
-var worldPeriod = 100;
+var worldPeriod = 50;
 setInterval(function() {
     for(var i in activeEntities) {
         var e = activeEntities[i];
         e.timeToNext -= worldPeriod;
         if(e.timeToNext <= 0) {
             e.timeToNext = e.intervalTime;
-            e.act();
+            if(e.act) { e.act(); }
         }
     }
 }, worldPeriod);

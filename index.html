@@ -245,20 +245,27 @@ function redraw(map, posData) {
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
-    if(!inventoryUp || ((x < 2 || x > 32) && (y < 4 || y > 14))) {
+    if(!inventoryUp || ((x < 2 || x > 36) && (y < 4 || y > 14))) {
         display.draw(x, y+2, ch, fg, bg);
     }
 }
 
 function showInventory() {
     inventoryUp = true;
-    var thirtySpaces = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    var thirtySpaces = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     display.drawText(2, 3, "--------------------------------");
     display.drawText(2, 4, ("| Inventory" + thirtySpaces).substr(0,30) + " |");
-    for(var i=0; i<inventory.length; ++i) {
-        display.drawText(2,  i+5, ("| " + i + ": " + inventory[i].name + thirtySpaces).substr(0,30) + " |", 34);
+    var invCount = 0;
+    for(var i=0; i<10; ++i) {
+        if(inventory[i]) {
+            display.drawText(2, invCount+5, ("| " + i + ": " + inventory[i].name + thirtySpaces).substr(0,30) + " |", 34);
+            invCount++;
+        }
     }
-    display.drawText(2, i+5, "--------------------------------");
+    for(i=0; i<10 - invCount; ++i) {
+        display.drawText(2, invCount+i+5, "| " + thirtySpaces + " |", 34);
+    }
+    display.drawText(2, invCount+i+5, "--------------------------------");
 }
 
 function hideInventory() {
