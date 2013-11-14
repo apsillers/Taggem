@@ -89,6 +89,14 @@ for(var i=0; i<10; ++i) {
         y: bugpos.y,
         z: 1
     });
+
+    var bugpos = utilities.getValidPosition(1);
+    new creatures.Nymph({
+        id: genId(),
+        x: bugpos.x,
+        y: bugpos.y,
+        z: 1
+    });
 }
 
 io.sockets.on('connection', function (socket) {
@@ -114,6 +122,7 @@ io.sockets.on('connection', function (socket) {
     var player = entities[id];
 
     inventories[id] = [];
+    player.inventory = inventories[id];
 
     socket.emit('id', id);
     socket.emit('health', { value: 10 });
@@ -248,29 +257,22 @@ io.sockets.on('connection', function (socket) {
 
     // this should fire whenever a change happens to the world that may implicate a client redraw
     // this could be limited at least to level-specific activity, or even more localized
-    function onChange(levels, types) {
+    function onChange(levels, types, players, msg) {
         if(entities[id] == undefined) { return; }
 
+        // if this message is not for you, ignore it
+        if(players != undefined && players.indexOf(id) == -1) { return; }
+
         if(levels == undefined || levels.indexOf(entities[id].z) != -1) {
-            if(types == undefined || (types.indexOf('pos') != -1 && types.indexOf('map') != -1)) {
+            if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.diffEntitiesForPlayer(id,
+                                                                    utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
+                                                                )); }
+            if(types.indexOf('map') != -1) {
                 var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
-                socket.emit('map+pos', {
-                                         'pos': utilities.diffEntitiesForPlayer(id,
-                                                    utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
-                                                ),
-                                         'map': mapDiff
-                                        });
-                
-            } else {
-                if(types.indexOf('pos') != -1) { socket.emit('pos', utilities.diffEntitiesForPlayer(id,
-                                                                        utilities.copyEntitiesForClient(utilities.filterEntities(id, entities))
-                                                                    )); }
-                if(types.indexOf('map') != -1) {
-                    var mapDiff = utilities.diffMapForPlayer(id, utilities.filterMapData(id, mapData));
-                    socket.emit('map', mapDiff);
-                }
-                if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
+                socket.emit('map', mapDiff);
             }
+            if(types.indexOf('health') != -1) { socket.emit('health', { value: entities[id].health }); }
+            if(types.indexOf('inventory') != -1) { socket.emit('inventory', msg); }
         }
     }
     changeListener.on("change", onChange);
@@ -302,7 +304,7 @@ function colorFromId(id) {
 }
 
 // make active entities act (shots, monsters, time bombs, etc.)
-var worldPeriod = 100;
+var worldPeriod = 50;
 setInterval(function() {
     for(var i in activeEntities) {
         var e = activeEntities[i];
