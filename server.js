@@ -18,12 +18,12 @@ function handler (req, res) {
 }
 
 var EventEmitter = require('events').EventEmitter;
-var changeListener = new EventEmitter();
-var outputListener = new EventEmitter();
+var listeners = {};
+listeners.change = new EventEmitter();
+listeners.output = new EventEmitter();
 
 var ROT = require("rot");
 
-ROT.RNG.setSeed(12345);
 ROT.DEFAULT_WIDTH = 80;
 ROT.DEFAULT_HEIGHT = 30;
 
@@ -48,11 +48,11 @@ var genId;
 
 var mapData = [];
 
-var utilities = require("utilities")(changeListener, outputListener, mapData, entities, activeEntities, entitiesByLocation, genId, playerKnowledge);
+var utilities = require("utilities")(listeners, mapData, entities, activeEntities, entitiesByLocation, genId, playerKnowledge);
 
 // import entity constructors
-var construct = require("entity_objects")(utilities, changeListener, outputListener, entities, activeEntities, entitiesByLocation, mapData);
-var creatures = require("entity_creatures")(utilities, changeListener, outputListener, entities, activeEntities, entitiesByLocation, mapData, construct);
+var construct = require("entity_objects")(utilities, listeners, entities, activeEntities, entitiesByLocation, mapData);
+var creatures = require("./monsters/entity_creatures")(utilities, listeners, entities, activeEntities, entitiesByLocation, mapData, construct);
 
 // generate level 1 map
 utilities.generateMapLevel(1);
@@ -144,7 +144,7 @@ io.sockets.on('connection', function (socket) {
         openables[i].blocking = !doOpen;
         openables[i].blocksLight = !doOpen;
       }
-      changeListener.emit("change", [entities[id].z], ['pos', 'map']);
+      listeners.change.emit("change", [entities[id].z], ['pos', 'map']);
     }
 
     socket.on('move', function(data) { player.act = function() { entities[id].step(data); delete this.act; }; });
@@ -158,7 +158,7 @@ io.sockets.on('connection', function (socket) {
 	            y: entities[id].y + (data.y * 4),
 	            z: entities[id].z,
 	        });
-            changeListener.emit("change", [entities[id].z], ['pos']);
+            listeners.change.emit("change", [entities[id].z], ['pos']);
 
             delete this.act;
         };
@@ -207,13 +207,13 @@ io.sockets.on('connection', function (socket) {
     socket.on("telepathy", function(data) {
         entities[id].psychic = data.active;
 
-        changeListener.emit("change", [entities[id].z], ["pos"]);
+        listeners.change.emit("change", [entities[id].z], ["pos"]);
     });
 
     socket.on("invisible", function(data) {
         entities[id].invisible = data.active;
 
-        changeListener.emit("change", [entities[id].z], ["pos"]);
+        listeners.change.emit("change", [entities[id].z], ["pos"]);
     });
 
     socket.on("pickup", function(data) {
@@ -233,7 +233,7 @@ io.sockets.on('connection', function (socket) {
                 //console.log("pickup", inventories[id]);
             }
 
-            changeListener.emit("change", [entities[id].z], ["pos"]);
+            listeners.change.emit("change", [entities[id].z], ["pos"]);
 
             delete this.act;
         };
@@ -249,7 +249,7 @@ io.sockets.on('connection', function (socket) {
 
             socket.emit("inventory", { change: "remove", slot: data.itemNum });
 
-            changeListener.emit("change", [entities[id].z], ["pos"]);
+            listeners.change.emit("change", [entities[id].z], ["pos"]);
 
             delete this.act;
         }
@@ -275,21 +275,21 @@ io.sockets.on('connection', function (socket) {
             if(types.indexOf('inventory') != -1) { socket.emit('inventory', msg); }
         }
     }
-    changeListener.on("change", onChange);
+    listeners.change.on("change", onChange);
         
     // when leaving, remove the player entity and remove his change listener
     socket.on("disconnect", function() {
         var level = entities[id].z;
         entities[id].remove();
-        changeListener.removeListener("change", onChange);
-        outputListener.removeListener("output", outputHandler);
+        listeners.change.removeListener("change", onChange);
+        listeners.output.removeListener("output", outputHandler);
         delete playerKnowledge[id];
-        changeListener.emit("change", [level], ['pos']);
+        listeners.change.emit("change", [level], ['pos']);
     });
     
-    changeListener.emit("change", [entities[id].z], ["pos", "map"]);
+    listeners.change.emit("change", [entities[id].z], ["pos", "map"]);
 
-    outputListener.on("output", outputHandler);
+    listeners.output.on("output", outputHandler);
     function outputHandler(options) {
         if((options.omitList == undefined || options.omitList.indexOf(id) == -1) &&
            (options.targets == undefined || options.targets.indexOf(id) != -1) &&
@@ -304,7 +304,7 @@ function colorFromId(id) {
 }
 
 // make active entities act (shots, monsters, time bombs, etc.)
-var worldPeriod = 50;
+var worldPeriod = 100;
 setInterval(function() {
     for(var i in activeEntities) {
         var e = activeEntities[i];
