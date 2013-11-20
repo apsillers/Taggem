@@ -17,7 +17,7 @@ module.exports = function(creatures, utilities, listeners, state, construct) {
         this.health = 4;
 
         this.act = function() {
-            var filteredEntities = utilities.filterEntities(this.id, state.entities);
+            var filteredEntities = this.getVisibleEntitySet();
             var playersInRange = [];
 
             // find all players visible to this creature
@@ -58,6 +58,10 @@ module.exports = function(creatures, utilities, listeners, state, construct) {
     creatures.GridBug.prototype.symbol = 'x';
     creatures.GridBug.prototype.name = 'grid bug';
     creatures.GridBug.prototype.hasBrain = true;
+
+    creatures.GridBug.spawn = function(point) {
+
+    }
 
     return creatures;
 

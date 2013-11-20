@@ -21,7 +21,7 @@ module.exports = function(utilities, listeners, state, construct) {
     creatureProto.stepToward = function(target) {
         // use Dijkstra's alg to find next step direction
         // this might someday be too expensive with more entities?
-        var passableCallback = utilities.passableOnLevel(state.entities, this.z);
+        var passableCallback = utilities.passableOnLevel(state.entities, this.z, this, target);
         var dijkstra = new ROT.Path.Dijkstra(this.target.x, this.target.y, passableCallback);
         var that = this;
         var found = false;

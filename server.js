@@ -59,14 +59,6 @@ utilities.generateMapLevel(1);
 
 
 for(var i=0; i<10; ++i) {
-    var boulderpos = utilities.getValidPosition(1);
-    new construct.Boulder({
-        id: genId(),
-        x: boulderpos.x,
-        y: boulderpos.y,
-        z: 1
-    });
-
     var wandpos = utilities.getValidPosition(1);
     new construct.FreezeWand({
         id: genId(),
@@ -306,13 +298,13 @@ function colorFromId(id) {
 }
 
 // make active entities act (shots, monsters, time bombs, etc.)
-var worldPeriod = 100;
+var worldPeriod = 300;
 setInterval(function() {
     for(var i in state.activeEntities) {
         var e = state.activeEntities[i];
         e.timeToNext -= worldPeriod;
         if(e.timeToNext <= 0) {
-            e.timeToNext = e.intervalTime;
+            e.timeToNext = Math.max(0, e.intervalTime + e.timeToNext);
             if(e.act) { e.act(); }
         }
     }
