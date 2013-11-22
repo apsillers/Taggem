@@ -2,7 +2,7 @@ module.exports = function(objects, utilities, listeners, state, mapData) {
 
     var construct = objects;
 
-    var shotProto = objects.shotProto = Object.create(entityProto);
+    var shotProto = objects.shotProto = Object.create(objects.entityProto);
     shotProto.act = function() {
         this.remove();
     };
@@ -59,7 +59,7 @@ module.exports = function(objects, utilities, listeners, state, mapData) {
         }
     }
 
-    wandProto = objects.wandProto = Object.create(entityProto);
+    wandProto = objects.wandProto = Object.create(objects.entityProto);
     wandProto.onFire = function(id, data) {
         var range = 5;
         var shooter = state.entities[id];
