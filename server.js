@@ -211,6 +211,17 @@ io.sockets.on('connection', function (socket) {
         listeners.change.emit("change", [player.z], ["pos"]);
     });
 
+    socket.on("mapall", function(data) {
+        var level = player.z;
+        for(var x=0; x<state.mapData[level].length; x++) {
+            for(var y=0; y<state.mapData[level][x].length; ++y) {
+                playerKnowledge[id].map[level][x+","+y] = state.mapData[level][x][y];
+            }
+        }
+
+        socket.emit('map', playerKnowledge[id].map[level]);
+    });
+
     socket.on("pickup", function(data) {
         player.act = function() {
             var you = state.entities[id];
@@ -299,7 +310,7 @@ function colorFromId(id) {
 }
 
 // make active entities act (shots, monsters, time bombs, etc.)
-var worldPeriod = 300;
+var worldPeriod = 200;
 setInterval(function() {
     for(var i in state.activeEntities) {
         var e = state.activeEntities[i];
