@@ -3,7 +3,7 @@ module.exports = function(utilities, listeners, state, construct) {
 
     var creatures = {};
 
-    var importList = ["grid_bug", "nymph"];
+    var importList = ["grid_bug", "nymph", "face_monster"];
 
     var creatureProto = creatures.creatureProto = Object.create(construct.entityProto);
     creatureProto.setHealth = function(healthDelta) {
@@ -18,10 +18,18 @@ module.exports = function(utilities, listeners, state, construct) {
     };
 
     // greedily step toward target space
-    creatureProto.stepToward = function(target) {
+    creatureProto.stepToward = function(target, isBlockingFunc) {
         // use Dijkstra's alg to find next step direction
         // this might someday be too expensive with more entities?
-        var passableCallback = utilities.passableOnLevel(state.entities, this.z, this, target);
+        var that = this;
+        var passableCallback = utilities.passableOnLevel(state.entities, this.z, function(ent) {
+            if((ent.x == target.x && ent.y == target.y) || (ent.x == that.x && ent.y == that.y)) {
+                return false;
+            }
+
+            if(isBlockingFunc) { return isBlockingFunc(ent); }
+            else { return ent.blocking; }
+        });
         var dijkstra = new ROT.Path.Dijkstra(this.target.x, this.target.y, passableCallback);
         var that = this;
         var found = false;

@@ -73,7 +73,7 @@ for(var i=0; i<10; ++i) {
         y: wandpos.y,
         z: 1
     });
-
+/*
     var bugpos = utilities.getValidPosition(1);
     new creatures.GridBug({
         id: genId(),
@@ -89,6 +89,15 @@ for(var i=0; i<10; ++i) {
         y: bugpos.y,
         z: 1
     });
+
+    var pos = utilities.getValidPosition(1);
+    new creatures.FaceMonster({
+        id: genId(),
+        x: pos.x,
+        y: pos.y,
+        z: 1
+    });
+*/
 }
 
 io.sockets.on('connection', function (socket) {
@@ -127,14 +136,7 @@ io.sockets.on('connection', function (socket) {
       var ents = utilities.getEntitiesByLocation(you.z, you.x + data.x, you.y + data.y, state.entities);
       openables = ents.filter(function (e) { return typeof e.isOpen != 'undefined'; });
       for (var i = 0; i < openables.length; i++) {
-        if (openables[i].isOpen != doOpen) {
-          var tmp = openables[i].symbol;
-          openables[i].symbol = openables[i].otherSymbol;
-          openables[i].otherSymbol = tmp;
-        }
-        openables[i].isOpen = doOpen;
-        openables[i].blocking = !doOpen;
-        openables[i].blocksLight = !doOpen;
+        openables[i].setOpen(doOpen);
       }
       listeners.change.emit("change", [you.z], ['pos', 'map']);
     }
