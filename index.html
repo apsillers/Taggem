@@ -1,6 +1,16 @@
 <html>
+<head>
+<style>
+    #messages p {
+        margin:1;
+    }
+</style>
+</head>
 <body>
 <div id="canvasContainer" style="float:left; border: thick solid black;"></div>
+
+<div id="messages" style="float:left; width: 300px; height: 384px; padding: 5px; background-color: black; color: white; font-family: courier; font-size: 12px;"></div>
+
 <div style="float:left;">
 <div style="width:500px;">
 <ul>
@@ -20,7 +30,7 @@
 <script>
 
 ROT.RNG.setSeed(12345);
-ROT.DEFAULT_WIDTH = 123;
+ROT.DEFAULT_WIDTH = 83;
 ROT.DEFAULT_HEIGHT = 32;
 
 var id, level = 1;
@@ -239,8 +249,6 @@ function redraw(map, posData) {
     drawEntities();
 
     drawHealth(health);
-
-    drawMessages();
 }
 
 function drawMapChar(x,y,ch,fg,bg) {
@@ -282,20 +290,18 @@ function defaultItemForAction(actionName) {
     return null;
 }
 
-var messages = [];
 function showMessage(m) {
-    messages.push(m);
-    drawMessages();
+    var p = document.createElement("p");
+    var messages = document.getElementById("messages");
+    p[(p.innerText == undefined)?"textContent":"innerText"] = m;
+    messages.appendChild(p);
+    messages.scrollTop = messages.scrollHeight;
 }
 
 socket.on("output", function(m) {
     showMessage(m);
 });
 
-function drawMessages() {
-    display.drawText(84, 0, messages.join("\n"), 39);
-
-}
 </script>
 </body>
 </html>

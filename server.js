@@ -51,7 +51,7 @@ var genId;
 var utilities = require("utilities")(listeners, state, genId, playerKnowledge);
 
 // import entity constructors
-var construct = require("entity_objects")(utilities, listeners, state);
+var construct = require("./objects/entity_objects")(utilities, listeners, state);
 var creatures = require("./monsters/entity_creatures")(utilities, listeners, state, construct);
 
 // generate level 1 map
