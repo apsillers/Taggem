@@ -73,7 +73,7 @@ for(var i=0; i<10; ++i) {
         y: wandpos.y,
         z: 1
     });
-/*
+
     var bugpos = utilities.getValidPosition(1);
     new creatures.GridBug({
         id: genId(),
@@ -89,16 +89,15 @@ for(var i=0; i<10; ++i) {
         y: bugpos.y,
         z: 1
     });
-
-    var pos = utilities.getValidPosition(1);
-    new creatures.FaceMonster({
-        id: genId(),
-        x: pos.x,
-        y: pos.y,
-        z: 1
-    });
-*/
 }
+
+var pos = utilities.getValidPosition(1);
+new creatures.FaceMonster({
+    id: genId(),
+    x: pos.x,
+    y: pos.y,
+    z: 1
+});
 
 io.sockets.on('connection', function (socket) {
 
