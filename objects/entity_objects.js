@@ -1,4 +1,4 @@
-module.exports = function(utilities, changeListener, outputListener, entities, activeEntities, entitiesByLocation, mapData) {
+module.exports = function(utilities, listeners, state, mapData) {
 
     ROT = require("rot");
 
@@ -7,10 +7,10 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
 
     var entityProto = objects.entityProto = {
         setLoc: function(z,x,y) {
-
+            var ebl = state.entitiesByLocation;
             if(this.z != undefined) {
                 // remove entity from entitesByLocation
-                var entsAtLoc = entitiesByLocation[this.z][this.x+","+this.y];
+                var entsAtLoc = ebl[this.z][this.x+","+this.y];
                 if(typeof entsAtLoc != 'undefined') {
                     var index = entsAtLoc.indexOf(this);
                     if(index != -1) { entsAtLoc.splice(index, 1); }
@@ -22,35 +22,35 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
             this.y = y;
             this.z = z;
 
-            utilities.ensureLevelExists(z);
+            utilities.ensureLevelExists(this.z);
 
             // add the entity to a new position in entitiesByLocation
-            if(typeof entitiesByLocation[this.z][this.x+","+this.y] != 'undefined') {
-                entitiesByLocation[this.z][this.x+","+this.y].push(this);
+            if(typeof ebl[this.z][this.x+","+this.y] != 'undefined') {
+                ebl[this.z][this.x+","+this.y].push(this);
             } else {
-                entitiesByLocation[this.z][this.x+","+this.y] = [this];
+                ebl[this.z][this.x+","+this.y] = [this];
             }
         },
         
         place: function(z,x,y, active) {
-            entities[this.id] = this;
-            if(active) { activeEntities[this.id] = this; }
+            state.entities[this.id] = this;
+            if(active) { state.activeEntities[this.id] = this; }
             this.setLoc(z, x, y);
         },
 
         remove: function() {
-            delete entities[this.id];
-            delete activeEntities[this.id];
+            delete state.entities[this.id];
+            delete state.activeEntities[this.id];
 
-            if(typeof entitiesByLocation[this.z] != 'undefined') {
-                var entsAtLoc = entitiesByLocation[this.z][this.x+","+this.y];
+            if(typeof state.entitiesByLocation[this.z] != 'undefined') {
+                var entsAtLoc = state.entitiesByLocation[this.z][this.x+","+this.y];
                 if(typeof entsAtLoc != 'undefined') {
                     var index = entsAtLoc.indexOf(this);
                     if(index != -1) {
                         entsAtLoc.splice(index, 1);
                     }
                 }
-                changeListener.emit("change", [this.z], ["pos"]);
+                listeners.change.emit("change", [this.z], ["pos"]);
             }
         },
 
@@ -76,11 +76,11 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
             }
                         
             // if there is a wall
-            if(mapData[newPos.z][newPos.x][newPos.y]) {
+            if(state.mapData[newPos.z][newPos.x][newPos.y]) {
                 // if the moving thing can dig
                 if(stepper.canDig) {
-                    mapData[newPos.z][newPos.x][newPos.y] = 0;
-                    changeListener.emit("change", [newPos.z], ['map']);
+                    state.mapData[newPos.z][newPos.x][newPos.y] = 0;
+                    listeners.change.emit("change", [newPos.z], ['map']);
                 }
 
                 newPos.blocking = true;
@@ -91,13 +91,13 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
                 return false;
             }
             
-            var destEntities = utilities.getEntitiesByLocation(newPos.z, newPos.x, newPos.y, entities);
+            var destEntities = utilities.getEntitiesByLocation(newPos.z, newPos.x, newPos.y, state.entities);
             var blockingEntities = destEntities.filter(function(e) { return !!e.blocking });    
 
             // if there's nothing there, move freely
             if(blockingEntities.length == 0) {
                 stepper.setLoc(newPos.z, newPos.x, newPos.y);
-                changeListener.emit("change", [newPos.z], ['pos', 'map']);
+                listeners.change.emit("change", [newPos.z], ['pos', 'map']);
 
                 for(var i=0; i<destEntities.length; ++i) {
                     if(stepper.onCollide) stepper.onCollide(destEntities[i], !options.pushed);
@@ -132,7 +132,7 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
                     }
                 }
 
-                changeListener.emit("change", [newPos.z], ['pos']);
+                listeners.change.emit("change", [newPos.z], ['pos']);
                 return true;
             }
 
@@ -151,13 +151,17 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
             if(you.z != target.z) { return false; }
 
             var fov = new ROT.FOV.PreciseShadowcasting(
-                utilities.lightPassesOnLevel(entities, you.z));
+                utilities.lightPassesOnLevel(state.entities, you.z));
             
             fov.compute(you.x, you.y, 10, function(x, y, r, visibility) {
                 if(x == target.x && y == target.y) { visible = true; }
             });
 
             return visible;
+        },
+
+        getVisibleEntitySet: function() {
+            return utilities.filterEntities(this.id, state.entities)
         }
     }
 
@@ -177,13 +181,13 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
 
         // known to all player that saw it
         // TODO: this actually tests if the trapdoor can see the player, so it does not account for reduced player visibility
-        var nearbyEntities = utilities.filterEntities(this.id, entities);
+        var nearbyEntities = utilities.filterEntities(this.id, state.entities);
         for(var i in nearbyEntities) {
             if(this.knownTo.indexOf(nearbyEntities[i].id) == -1) { this.knownTo.push(nearbyEntities[i].id); }
         }
 
-        outputListener.emit("output", { message: "You fall down a trapdoor!", targets: [entity.id] });
-        outputListener.emit("output", { message: (entity.name?"The " + entity.name:"Thing #" + entity.id) + " falls into a trapdoor!",
+        listeners.output.emit("output", { message: "You fall down a trapdoor!", targets: [entity.id] });
+        listeners.output.emit("output", { message: (entity.name?"The " + entity.name:"Thing #" + entity.id) + " falls into a trapdoor!",
                                         visual: true,
                                         point: this,
                                         omitList:[entity.id] });
@@ -192,7 +196,7 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
         utilities.ensureLevelExists(entity.z + 1);
         var newPos = utilities.getValidPosition(entity.z + 1);
         entity.setLoc(entity.z + 1, newPos.x, newPos.y);
-        changeListener.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
+        listeners.change.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
     };
 
     objects.Player = function(options) {
@@ -206,10 +210,10 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
 	            var newPlace = utilities.getValidPosition(1);
                 this.place(1, newPlace.x, newPlace.y);
 	            this.health = 10;
-                outputListener.emit("output", { message: "You die!", targets: [this.id] });
-	            changeListener.emit("change", [this.z], ["pos", "map"]);
+                listeners.output.emit("output", { message: "You die!", targets: [this.id] });
+	            listeners.change.emit("change", [this.z], ["pos", "map"]);
             }
-            changeListener.emit("change", [this.z], ["health"]);
+            listeners.change.emit("change", [this.z], ["health"]);
         };
 
         this.place(options.z, options.x, options.y, true);
@@ -224,66 +228,8 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
     objects.Player.prototype.intervalTime = 100;
     objects.Player.prototype.onCollide = function(entity, isStepper) {
         if(isStepper && entity.health) {
-            outputListener.emit("output", { message: "You hit the " + entity.name + "!", targets: [this.id] });
+            listeners.output.emit("output", { message: "You hit the " + entity.name + "!", targets: [this.id] });
             entity.setHealth(-1);
-        }
-    }
-
-    var shotProto = objects.shotProto = Object.create(entityProto);
-    shotProto.act = function() {
-        this.step(this.vector);
-    };
-    shotProto.timeToNext = 100;
-    shotProto.intervalTime = 100;
-    
-    objects.FreezeShot = function(options) {
-        this.id = options.id;
-        this.symbol = '*';
-        this.color = options.color || "#0FF";
-        if(options.interval) {
-            this.timeToNext = options.interval;
-            this.intervalTime = options.interval;
-        }
-        this.vector = options.vector;
-
-        this.place(options.z, options.x, options.y, true);
-    }
-    objects.FreezeShot.prototype = Object.create(shotProto);
-    objects.FreezeShot.prototype.onCollide = function(entity) {
-        if(!entity) return;
-
-        if(entity.blocking) {
-            var level = this.z;
-            this.remove();
-
-            entity.frozen = true;
-            setTimeout(function() { entity.frozen = false; }, 2000);
-            changeListener.emit("change", [level], ['pos']);
-        }
-    }
-
-
-    objects.FireballShot = function(options) {
-        this.id = options.id;
-        this.symbol = '*';
-        this.color = options.color || "#F00";
-        this.timeToNext = options.interval;
-        this.intervalTime = options.interval;
-        this.vector = options.vector;
-
-        this.place(options.z, options.x, options.y, true);
-    }
-    objects.FireballShot.prototype = Object.create(shotProto);
-    objects.FireballShot.prototype.onCollide = function(entity) {
-        if(!entity) return;
-
-        if(entity.blocking) {
-            var level = this.z;
-            this.remove();
-
-            if(entity.health) { entity.setHealth(-2); }
-
-            changeListener.emit("change", [level], ['pos']);
         }
     }
 
@@ -298,6 +244,7 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
     objects.Boulder.prototype.name = 'boulder';
     objects.Boulder.prototype.pushable = true;
     objects.Boulder.prototype.blocking = true;
+    objects.Boulder.prototype.blocksLight = true;
 
 
     objects.Door = function(options) {
@@ -310,8 +257,18 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
         this.color = "#FF0";
 
         this.place(options.z, options.x, options.y);
-    }
+    };
     objects.Door.prototype = Object.create(entityProto);
+    objects.Door.prototype.setOpen = function(doOpen) {
+        if (this.isOpen != doOpen) {
+          var tmp = this.symbol;
+          this.symbol = this.otherSymbol;
+          this.otherSymbol = tmp;
+        }
+        this.isOpen = doOpen;
+        this.blocking = !doOpen;
+        this.blocksLight = !doOpen;
+    };
 
     objects.Mine = function(options) {
         this.id = options.id;
@@ -321,14 +278,14 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
         this.invisible = true;
 
         this.onCollide = function(entity) {
-	        changeListener.emit("change", [entity.z], ["pos"]);
+	        listeners.change.emit("change", [entity.z], ["pos"]);
 	        if(typeof entity.health != 'undefined') {
 	            entity.setHealth(-10);
 	        }
 	
 	        for(var i = 0; i < 9; i++) {
-	            entities[this.sisterMineIds[i]].color = "#F00";
-	            entities[this.sisterMineIds[i]].remove();
+	            state.entities[this.sisterMineIds[i]].color = "#F00";
+	            state.entities[this.sisterMineIds[i]].remove();
 	        }
         }
 
@@ -336,58 +293,9 @@ module.exports = function(utilities, changeListener, outputListener, entities, a
     }
     objects.Mine.prototype = Object.create(entityProto);
 
+    require("./wands")(objects, utilities, listeners, state, mapData);
 
-    objects.FreezeWand = function(options) {
-        this.id = options.id;
-        this.name = "wand of freezing";
-        this.symbol = '/';
-        this.color = "#0FF";
-        this.collectable = true;
-        this.shootable = true;
-
-        this.place(options.z, options.x, options.y);
-    }
-    objects.FreezeWand.prototype = Object.create(entityProto);
-    objects.FreezeWand.prototype.onFire = function(id, data) {
-        var shotId = utilities.genId();
-        new construct.FreezeShot({
-            id: shotId,
-            color: "#0FF",
-            x: entities[id].x,
-            y: entities[id].y,
-            z: entities[id].z,
-            interval: 100,
-            vector: data
-        });
-
-        changeListener.emit("change", [entities[id].z], ["pos"]);
-    }
-
-    objects.FireballWand = function(options) {
-        this.id = options.id;
-        this.name = "wand of fireball";
-        this.collectable = true;
-        this.shootable = true;
-
-        this.place(options.z, options.x, options.y);
-    }
-    objects.FireballWand.prototype = Object.create(entityProto);
-    objects.FireballWand.prototype.symbol = "/";
-    objects.FireballWand.prototype.color = "#F00";
-    objects.FireballWand.prototype.onFire = function(id, data) {
-        var shotId = utilities.genId();
-        new construct.FireballShot({
-            id: shotId,
-            color: "#F00",
-            x: entities[id].x,
-            y: entities[id].y,
-            z: entities[id].z,
-            interval: 100,
-            vector: data
-        });
-
-        changeListener.emit("change", [entities[id].z], ["pos"]);
-    }
+    var creatures = require("../monsters/entity_creatures")(utilities, listeners, state, construct);
 
     return objects;
 }
