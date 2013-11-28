@@ -208,7 +208,7 @@ function ItemDirCommand (action) {
             socket.emit(action, vec);
           }
         }
-        if (item <= 9 && item >= 0) {
+        else if (item <= 9 && item >= 0) {
           interpCallback = makeCB( function (key) {
               vec = dirToVector[key];
               if (vec) {
