@@ -200,6 +200,14 @@ function ItemDirCommand (action) {
   return function () {
     interpCallback = makeCB( function (key) {
         item = keyToItem[key];
+        if (item == undefined) {
+          item = defaultItemForAction(action);
+          vec = dirToVector[key]
+          if (vec) {
+            vec.itemNum = item;
+            socket.emit(action, vec);
+          }
+        }
         if (item <= 9 && item >= 0) {
           interpCallback = makeCB( function (key) {
               vec = dirToVector[key];
