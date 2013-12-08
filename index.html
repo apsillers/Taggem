@@ -288,6 +288,7 @@ function redraw(map, posData) {
 
     if(posData["add"] && posData["add"][id] != undefined) {
         level = posData["add"][id].z;
+        console.log(level, Math.random());
         if(entities[level] == undefined) { entities[level] = {}; }
     }
 

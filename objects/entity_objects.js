@@ -17,6 +17,8 @@ module.exports = function(utilities, listeners, state, mapData) {
                 }
             }
 
+            if(this.z != z) { this.changedLevel = true; }
+
             // move the entity
             this.x = x;
             this.y = y;
@@ -292,6 +294,24 @@ module.exports = function(utilities, listeners, state, mapData) {
         this.place(options.z, options.x, options.y);
     }
     objects.Mine.prototype = Object.create(entityProto);
+
+    objects.Stairs = function(options) {
+        this.id = options.id;
+        this.symbol = options.symbol;
+        this.color = "#FF0";
+        this.direction = options.direction;
+
+        this.onCollide = function(entity) {
+            utilities.ensureLevelExists(this.z + this.direction);
+            var newPos = this.partner;
+            entity.setLoc(newPos.z, newPos.x, newPos.y);
+            listeners.change.emit("change", [this.z, newPos.z], ["pos", "map"]);
+        }
+
+        this.place(options.z, options.x, options.y);
+    }
+    objects.Stairs.prototype = Object.create(entityProto);
+
 
     require("./wands")(objects, utilities, listeners, state, mapData);
 
