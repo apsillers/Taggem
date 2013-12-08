@@ -84,6 +84,7 @@ for(var i=0; i<10; ++i) {
         z: 1
     });
 
+    
     var bugpos = utilities.getValidPosition(1);
     new creatures.Nymph({
         id: genId(),
@@ -142,7 +143,13 @@ io.sockets.on('connection', function (socket) {
       listeners.change.emit("change", [you.z], ['pos', 'map']);
     }
 
-    socket.on('move', function(data) { player.act = function() { state.entities[id].step(data); delete this.act; }; });
+    socket.on('move', function(data) {
+        player.act = function() {
+            state.entities[id].step(data);
+            delete this.act;
+            //console.log(state.entitiesByLocation[player.z][player.x+","+player.y].map(function(e) { return e.symbol; }));
+        };
+    });
     
     socket.on("zap", function(data) {
         player.act = function() {
