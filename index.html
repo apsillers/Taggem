@@ -9,7 +9,7 @@
 <body>
 <div id="canvasContainer" style="float:left; border: thick solid black;"></div>
 
-<div id="messages" style="float:left; width: 300px; height: 384px; padding: 5px; background-color: black; color: white; font-family: courier; font-size: 12px;"></div>
+<div id="messages" style="float:left; width: 300px; height: 384px; padding: 5px; background-color: black; color: white; font-family: courier; font-size: 12px; overflow-y: scroll;"></div>
 
 <div style="float:left;">
 <div style="width:500px;">
@@ -289,7 +289,6 @@ function redraw(map, posData) {
 
     if(posData["add"] && posData["add"][id] != undefined) {
         level = posData["add"][id].z;
-        console.log(level, Math.random());
         if(entities[level] == undefined) { entities[level] = {}; }
     }
 
