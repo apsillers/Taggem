@@ -73,6 +73,13 @@ for(var i=0; i<10; ++i) {
         y: wandpos.y,
         z: 1
     });
+    wandpos = utilities.getValidPosition(1);
+    new construct.PortalGun({
+        id: genId(),
+        x: wandpos.x,
+        y: wandpos.y,
+        z: 1
+    });
 
     creatures.GridBug.spawn(utilities.getValidPosition(1))
     creatures.Nymph.spawn(utilities.getValidPosition(1))

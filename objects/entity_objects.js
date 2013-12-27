@@ -1,4 +1,4 @@
-module.exports = function(utilities, listeners, state, mapData) {
+module.exports = function(utilities, listeners, state) {
 
     ROT = require("rot");
 
@@ -167,73 +167,6 @@ module.exports = function(utilities, listeners, state, mapData) {
         }
     }
 
-    objects.Pit = function(options) {
-        this.id = options.id;
-        this.symbol = '^';
-        this.color = '#FFF';
-        this.hidden = true;
-        this.knownTo = options.knownTo;
-
-        this.place(options.z, options.x, options.y);
-    }
-    objects.Pit.prototype = Object.create(entityProto);
-    objects.Pit.prototype.onCollide = function(entity) {
-        // known to player who just fell
-        if(this.knownTo.indexOf(entity.id) == -1) { this.knownTo.push(entity.id); }
-
-        // known to all player that saw it
-        // TODO: this actually tests if the trapdoor can see the player, so it does not account for reduced player visibility
-        var nearbyEntities = utilities.filterEntities(this.id, state.entities);
-        for(var i in nearbyEntities) {
-            if(this.knownTo.indexOf(nearbyEntities[i].id) == -1) { this.knownTo.push(nearbyEntities[i].id); }
-        }
-
-        listeners.output.emit("output", { message: "You fall down a trapdoor!", targets: [entity.id] });
-        listeners.output.emit("output", { message: (entity.name?"The " + entity.name:"Thing #" + entity.id) + " falls into a trapdoor!",
-                                        visual: true,
-                                        point: this,
-                                        omitList:[entity.id] });
-        
-        // drop the player down a level
-        utilities.ensureLevelExists(entity.z + 1);
-        var newPos = utilities.getValidPosition(entity.z + 1);
-        entity.setLoc(entity.z + 1, newPos.x, newPos.y);
-        listeners.change.emit("change", [entity.z, entity.z-1], ["pos", "map"]);
-    };
-
-    objects.Player = function(options) {
-        this.id = options.id;
-        this.color = options.color;
-        this.health = options.health;
-        this.timeToNext = this.intervalTime;
-	    this.setHealth = function(healthDelta) {
-            this.health += healthDelta;
-            if(this.health <= 0) {
-	            var newPlace = utilities.getValidPosition(1);
-                this.place(1, newPlace.x, newPlace.y);
-	            this.health = 10;
-                listeners.output.emit("output", { message: "You die!", targets: [this.id] });
-	            listeners.change.emit("change", [this.z], ["pos", "map"]);
-            }
-            listeners.change.emit("change", [this.z], ["health"]);
-        };
-
-        this.place(options.z, options.x, options.y, true);
-    }
-    objects.Player.prototype = Object.create(entityProto);
-    objects.Player.prototype.symbol = '@';
-    objects.Player.prototype.forgettable = true;
-    objects.Player.prototype.blocking = true;
-    objects.Player.prototype.canPush = true;
-    objects.Player.prototype.canDig = true;
-    objects.Player.prototype.hasBrain = true;
-    objects.Player.prototype.intervalTime = 100;
-    objects.Player.prototype.onCollide = function(entity, isStepper) {
-        if(isStepper && entity.health) {
-            listeners.output.emit("output", { message: "You hit the " + entity.name + "!", targets: [this.id] });
-            entity.setHealth(-1);
-        }
-    }
 
     objects.Boulder = function(options) {
         this.id = options.id;
@@ -313,7 +246,10 @@ module.exports = function(utilities, listeners, state, mapData) {
     objects.Stairs.prototype = Object.create(entityProto);
 
 
-    require("./wands")(objects, utilities, listeners, state, mapData);
+    require("./wands")(objects, utilities, listeners, state);
+    require("./player")(objects, utilities, listeners, state);
+    require("./pit")(objects, utilities, listeners, state);
+    require("./portal_gun")(objects, utilities, listeners, state);
 
     var creatures = require("../monsters/entity_creatures")(utilities, listeners, state, construct);
 
