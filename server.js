@@ -75,32 +75,21 @@ for(var i=0; i<10; ++i) {
         y: wandpos.y,
         z: 1
     });
-
-    var bugpos = utilities.getValidPosition(1);
-    new creatures.GridBug({
+    wandpos = utilities.getValidPosition(1);
+    new construct.PortalGun({
         id: genId(),
-        x: bugpos.x,
-        y: bugpos.y,
+        x: wandpos.x,
+        y: wandpos.y,
         z: 1
     });
 
-    
-    var bugpos = utilities.getValidPosition(1);
-    new creatures.Nymph({
-        id: genId(),
-        x: bugpos.x,
-        y: bugpos.y,
-        z: 1
-    });
+    creatures.GridBug.spawn(utilities.getValidPosition(1))
+    creatures.Nymph.spawn(utilities.getValidPosition(1))
+
 }
 
-var pos = utilities.getValidPosition(1);
-new creatures.FaceMonster({
-    id: genId(),
-    x: pos.x,
-    y: pos.y,
-    z: 1
-});
+creatures.FaceMonster.spawn(utilities.getValidPosition(1))
+
 
 io.sockets.on('connection', function (socket) {
 
@@ -312,6 +301,9 @@ io.sockets.on('connection', function (socket) {
             socket.emit("output", options.message);
         }
     }
+
+
+    listeners.output.emit("output", { message: "Welcome to Taggem!", targets: [id] });
 });
 
 function colorFromId(id) {

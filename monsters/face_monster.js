@@ -62,9 +62,10 @@ module.exports = function(creatures, utilities, listeners, state, construct) {
     creatures.FaceMonster.prototype.canPush = true;
 
     creatures.FaceMonster.spawn = function(point) {
-
+        point.id = utilities.genId();
+        new creatures.FaceMonster(point);
     }
-
+    
     return creatures;
 
 };

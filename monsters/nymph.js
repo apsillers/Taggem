@@ -82,4 +82,9 @@ module.exports = function(creatures, utilities, listeners, state, construct) {
     creatures.Nymph.prototype.symbol = 'n';
     creatures.Nymph.prototype.name = 'nymph';
     creatures.Nymph.prototype.hasBrain = true;
+
+    creatures.Nymph.spawn = function(point) {
+        point.id = utilities.genId();
+        new creatures.Nymph(point);        
+    }
 }
