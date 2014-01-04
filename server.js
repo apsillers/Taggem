@@ -17,65 +17,41 @@ function handler (req, res) {
   });
 }
 
-var EventEmitter = require('events').EventEmitter;
-var listeners = {};
-listeners.change = new EventEmitter();
-listeners.output = new EventEmitter();
-
 var ROT = require("rot");
 
 ROT.DEFAULT_WIDTH = 80;
 ROT.DEFAULT_HEIGHT = 30;
 
-var state = {};
-state.entities = {};
-state.activeEntities = {};
-state.entitiesByLocation = [];
-state.mapData = [];
-var inventories = {};
-var playerKnowledge = {};
+var state = require("./state.js");
+var listeners = require("./listeners.js");
 
-inventories.getOpenSlot = function(inv) {
-    for(var i=0; i<inv.length; ++i) {
-        if(inv[i] == undefined) { return i; }
-    }
-    return inv.length;
-}
-
-var genId;
-(function() {
-    var id = 0;
-    genId = function() { return id++; }
-})();
-
-var utilities = require("utilities")(listeners, state, genId, playerKnowledge);
+var utilities = require("utilities");
 
 // import entity constructors
-var construct = require("./objects/entity_objects")(utilities, listeners, state);
-var creatures = require("./monsters/entity_creatures")(utilities, listeners, state, construct);
+var construct = require("./objects/entity_objects");
+var creatures = require("./monsters/entity_creatures");
 
 // generate level 1 map
 utilities.generateMapLevel(1);
 
-
 for(var i=0; i<10; ++i) {
     var wandpos = utilities.getValidPosition(1);
     new construct.FreezeWand({
-        id: genId(),
+        id: utilities.genId(),
         x: wandpos.x,
         y: wandpos.y,
         z: 1
     });
     wandpos = utilities.getValidPosition(1);
     new construct.FireballWand({
-        id: genId(),
+        id: utilities.genId(),
         x: wandpos.x,
         y: wandpos.y,
         z: 1
     });
     wandpos = utilities.getValidPosition(1);
     new construct.PortalGun({
-        id: genId(),
+        id: utilities.genId(),
         x: wandpos.x,
         y: wandpos.y,
         z: 1
@@ -88,12 +64,11 @@ for(var i=0; i<10; ++i) {
 
 creatures.FaceMonster.spawn(utilities.getValidPosition(1))
 
-
 io.sockets.on('connection', function (socket) {
 
-    var id = genId();
+    var id = utilities.genId();
 
-    playerKnowledge[id] = {
+    state.playerKnowledge[id] = {
         map: [],
         entities: {}
     }
@@ -111,8 +86,8 @@ io.sockets.on('connection', function (socket) {
 
     var player = state.entities[id];
 
-    inventories[id] = [];
-    player.inventory = inventories[id];
+    state.inventories[id] = [];
+    player.inventory = state.inventories[id];
 
     socket.emit('id', id);
     socket.emit('health', { value: 10 });
@@ -142,7 +117,7 @@ io.sockets.on('connection', function (socket) {
         player.act = function() {
             var you = state.entities[id];
 	        new construct.Pit({
-	            id: genId(),
+	            id: utilities.genId(),
                 knownTo: [id],
 	            x: you.x + (data.x * 4),
 	            y: you.y + (data.y * 4),
@@ -161,7 +136,7 @@ io.sockets.on('connection', function (socket) {
 	        var counter = 0;
 	        for(var i = -1; i <= 1; i++) {
 	            for(var j = -1; j <= 1; j++) {
-		            var mineId = genId();
+		            var mineId = utilities.genId();
 		
 		            myIds[counter] = mineId;
 		            counter = counter + 1;
@@ -183,7 +158,7 @@ io.sockets.on('connection', function (socket) {
 
     socket.on("shoot", function(data) {
         player.act = function() {
-            var shotItem = inventories[id][data.itemNum];
+            var shotItem = state.inventories[id][data.itemNum];
 
             if(shotItem && shotItem.onFire) {
                 shotItem.onFire(id, data);
@@ -211,11 +186,11 @@ io.sockets.on('connection', function (socket) {
         var level = player.z;
         for(var x=0; x<state.mapData[level].length; x++) {
             for(var y=0; y<state.mapData[level][x].length; ++y) {
-                playerKnowledge[id].map[level][x+","+y] = state.mapData[level][x][y];
+                state.playerKnowledge[id].map[level][x+","+y] = state.mapData[level][x][y];
             }
         }
 
-        socket.emit('map', playerKnowledge[id].map[level]);
+        socket.emit('map', state.playerKnowledge[id].map[level]);
     });
 
     socket.on("pickup", function(data) {
@@ -227,8 +202,8 @@ io.sockets.on('connection', function (socket) {
                 // TODO: how to decide what to pick up?
                 var pickups = ebl[you.z][you.x+","+you.y].filter(function(e) { return e.collectable; });
                 for(var i=0; i<pickups.length; ++i) {
-                    var slot = inventories.getOpenSlot(inventories[id]);            
-                    inventories[id][slot] = pickups[i];
+                    var slot = state.inventories.getOpenSlot(state.inventories[id]);            
+                    state.inventories[id][slot] = pickups[i];
                     pickups[i].remove();
                     socket.emit("inventory", { change: "add", slot: slot, item: pickups[i] });
                 }
@@ -244,9 +219,9 @@ io.sockets.on('connection', function (socket) {
     socket.on("drop", function(data) {
         player.act = function() {
             var you = state.entities[id];
-            if(inventories[id][data.itemNum] != undefined) {
-                inventories[id][data.itemNum].place(you.z, you.x, you.y);
-                delete inventories[id][data.itemNum];
+            if(state.inventories[id][data.itemNum] != undefined) {
+                state.inventories[id][data.itemNum].place(you.z, you.x, you.y);
+                delete state.inventories[id][data.itemNum];
             }
 
             socket.emit("inventory", { change: "remove", slot: data.itemNum });
@@ -285,7 +260,7 @@ io.sockets.on('connection', function (socket) {
         state.entities[id].remove();
         listeners.change.removeListener("change", onChange);
         listeners.output.removeListener("output", outputHandler);
-        delete playerKnowledge[id];
+        delete state.playerKnowledge[id];
         listeners.change.emit("change", [level], ['pos']);
     });
     
