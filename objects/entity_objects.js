@@ -1,6 +1,6 @@
-var utilities = require("utilities");
-var state = require("../state.js");
-var listeners = require("../listeners.js");
+var utilities = require("../utilities");
+var state = require("../state");
+var listeners = require("../listeners");
 var ROT = require("rot");
 
 var objects = {};

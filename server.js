@@ -22,10 +22,10 @@ var ROT = require("rot");
 ROT.DEFAULT_WIDTH = 80;
 ROT.DEFAULT_HEIGHT = 30;
 
-var state = require("./state.js");
-var listeners = require("./listeners.js");
+var state = require("./state");
+var listeners = require("./listeners");
 
-var utilities = require("utilities");
+var utilities = require("./utilities");
 
 // import entity constructors
 var construct = require("./objects/entity_objects");

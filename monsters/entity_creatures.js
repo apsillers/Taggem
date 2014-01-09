@@ -1,8 +1,8 @@
 var ROT = require("rot");
-var utilities = require("utilities");
-var state = require("../state.js");
-var listeners = require("../listeners.js");
-var construct = require("../objects/entity_objects.js");
+var utilities = require("../utilities");
+var state = require("../state");
+var listeners = require("../listeners");
+var construct = require("../objects/entity_objects");
 
 var creatures = {};
 module.exports = creatures;

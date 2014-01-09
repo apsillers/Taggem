@@ -1,5 +1,5 @@
 var state = require("../state");
-var utilities = require("utilities");
+var utilities = require("../utilities");
 var listeners = require("../listeners");
 var construct = require("../objects/entity_objects")
 var creatures = require("./entity_creatures");

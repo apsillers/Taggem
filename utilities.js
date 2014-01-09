@@ -296,6 +296,6 @@ var utilities = {
 module.exports = utilities;
 
 var ROT = require("rot");
-var state = require("../state");
-var listeners = require("../listeners");
-var construct = require("../objects/entity_objects");
+var state = require("./state");
+var listeners = require("./listeners");
+var construct = require("./objects/entity_objects");
