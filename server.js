@@ -4,20 +4,22 @@ var app = require('http').createServer(handler)
 
 app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
 
-io.set('log level', 1);
 function handler (req, res) {
-  var path = (req['url']=="/")?"/index.html":'/rot.min.js';
-  fs.readFile(__dirname + path,
-  function (err, data) {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading');
-    }
+    var path;
+    var allowedURLs = ["/index.html", "/gm.html", "/rot.min.js"];
+    if(allowedURLs.indexOf(req.url)) { path = req.url; }
+    if(req.url == "/") { path = "/index.html"; }
 
-    res.setHeader("content-type", "text/html");
-    res.writeHead(200);
-    res.end(data);
-  });
+    fs.readFile(__dirname + path,
+                function (err, data) {
+                    if (err) {
+                        res.writeHead(500);
+                        return res.end('Error loading');
+                    }
+
+                    res.writeHead(200);
+                    res.end(data);
+                });
 }
 
 var ROT = require("rot");
