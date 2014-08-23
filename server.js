@@ -1,6 +1,5 @@
-var app = require('http').createServer(handler)
+ar app = require('http').createServer(handler)
   , io = require('socket.io').listen(app)
-<<<<<<< HEAD
   , fs = require('fs');
 
 app.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080, process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1");
@@ -18,27 +17,6 @@ function handler (req, res) {
     res.writeHead(200);
     res.end(data);
   });
-=======
-  , fs = require('fs')
-app.listen(process.argv[2] || 8080);
-io.set('log level', 1);
-function handler (req, res) {
-    var path;
-    var allowedURLs = ["/index.html", "/gm.html", "/rot.min.js"];
-    if(allowedURLs.indexOf(req.url)) { path = req.url; }
-    if(req.url == "/") { path = "/index.html"; }
-
-    fs.readFile(__dirname + path,
-		function (err, data) {
-		    if (err) {
-			res.writeHead(500);
-			return res.end('Error loading');
-		    }
-		    
-		    res.writeHead(200);
-		    res.end(data);
-		});
->>>>>>> master
 }
 
 var ROT = require("rot");
