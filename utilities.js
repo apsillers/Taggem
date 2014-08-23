@@ -140,8 +140,10 @@ var utilities = {
     },
 
     // given a master set of entities and an entity id,
-    // return the set of entires visible to the entity with the given id
+    // return the set of entities visible to the entity with the given id
     filterEntities: function(id, inputEntities) {
+	if(id == "GM") { return inputEntities; }
+
         var you = state.entities[id];
         var filteredEntities = {};
 
@@ -203,6 +205,8 @@ var utilities = {
     // return a dictionary with "x,y" keys that have the map values of
     // all maps spaces visible to the player with the given id
     filterMapData: function(id, inputMapData) {
+	if(id=="GM") { return inputMapData; }
+
         var you = state.entities[id];
         var filteredMapData = {};
         
@@ -218,11 +222,15 @@ var utilities = {
     },
 
     diffMapForPlayer: function(id, mapData) {
+	var level;
+	if(id.GM) { level = id.level; id = id.id; }
+	else { level = state.entities[id].z; }
+
         var mapDataDiff = {};
-        if(state.playerKnowledge[id].map[state.entities[id].z] == undefined) {
-            state.playerKnowledge[id].map[state.entities[id].z] = {};
+        if(state.playerKnowledge[id].map[level] == undefined) {
+            state.playerKnowledge[id].map[level] = {};
         }
-        var playerMap = state.playerKnowledge[id].map[state.entities[id].z];
+        var playerMap = state.playerKnowledge[id].map[level];
         for(var i in mapData) {
             if(mapData[i] != playerMap[i]) {
                 playerMap[i] = mapData[i];
@@ -237,20 +245,26 @@ var utilities = {
     // so we diff these sets
     diffEntitiesForPlayer: function(id, visibleEntities) {
         var entitiesDiff = { "add": {}, "remove": [] };
-        if(state.playerKnowledge[id].entities[state.entities[id].z] == undefined) {
-            state.playerKnowledge[id].entities[state.entities[id].z] = {};
+        
+	var level;
+	if(id.GM == true) { level = id.level; }
+	else { level = state.entities[id].z }
+
+	var idVal = id.GM?id.id:id;
+	if(state.playerKnowledge[idVal].entities[level] == undefined) {
+            state.playerKnowledge[idVal].entities[level] = {};
         }
-        var playerKnownEntities = state.playerKnowledge[id].entities[state.entities[id].z];
+        var playerKnownEntities = state.playerKnowledge[idVal].entities[level];
 
         // if th eplayer's levelChanged flag is set, report the player's position
         // HACK: this is to avoid a bug in level-changing
-        if(state.entities[id].changedLevel) {
+        if(!id.GM && state.entities[id].changedLevel) {
             state.entities[id].changedLevel = false;
             entitiesDiff["add"][id] = visibleEntities[id];
         }
 
         // if we should see something we saw previosuly, but it is now missing, remove it
-        var expectedVisible = utilities.filterEntities(id, playerKnownEntities);
+        var expectedVisible = utilities.filterEntities(id.GM?"GM":id, playerKnownEntities);
         for(var i in expectedVisible) {
             if(visibleEntities[i] == undefined) {
                 entitiesDiff["remove"].push(i);
@@ -280,7 +294,7 @@ var utilities = {
             if(state.entities[i] == undefined) {
                 entitiesDiff["remove"].push(i);
                 delete playerKnownEntities[i];
-            } else if(state.entities[i].z != state.entities[id].z) {
+            } else if(state.entities[i].z != level) {
                 entitiesDiff["remove"].push(i);
                 delete playerKnownEntities[i];
             } else if(visibleEntities[i] == undefined && state.entities[i].forgettable) {
