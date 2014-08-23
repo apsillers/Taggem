@@ -17,7 +17,7 @@ function handler (req, res) {
                         return res.end('Error loading');
                     }
 
-		    if(path.indexOf(".html.") != -1) { res.setHeader("Content-Type", "text/html"); }
+		    if(path.indexOf(".html") != -1) { res.setHeader("Content-Type", "text/html"); }
                     res.writeHead(200);
                     res.end(data);
                 });
