@@ -44,7 +44,7 @@ var display = new ROT.Display({fontSize:12});
 document.getElementById("canvasContainer").appendChild(display.getContainer());
 
 var socket = io.connect('//' + location.host + (location.protocol=="https:"?":8443":":8000"));
-
+socket.emit("player");
 socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
 socket.on("map", function(mapUpdates) { redraw(mapUpdates, {}); });
 socket.on("pos", function(pos) { redraw({}, pos); });
