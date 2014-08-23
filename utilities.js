@@ -16,7 +16,7 @@ var utilities = {
             // reject solid walls and light-blocking entities
         } while (state.mapData[level][x][y] ||
                  utilities.getEntitiesByLocation(level, x, y).some(function(e) { return e.blocksLight; }))
-        return {x: x, y: y, z: level}
+	return {x: x, y: y, z: level}
     },
 
     ensureLevelExists: function(level) {
@@ -96,9 +96,38 @@ var utilities = {
                 id: genId(),
                 x: boulderpos.x,
                 y: boulderpos.y,
-                z: 1
+                z: level
             });
         }
+
+	for(var i=0; i<10; ++i) {
+	    var wandpos = utilities.getValidPosition(level);
+	    new construct.FreezeWand({
+		id: utilities.genId(),
+		x: wandpos.x,
+		y: wandpos.y,
+		z: level
+	    });
+	    wandpos = utilities.getValidPosition(level);
+	    new construct.FireballWand({
+		id: utilities.genId(),
+		x: wandpos.x,
+		y: wandpos.y,
+		z: level
+	    });
+	    wandpos = utilities.getValidPosition(level);
+	    new construct.PortalGun({
+		id: utilities.genId(),
+		x: wandpos.x,
+		y: wandpos.y,
+		z: level
+	    });
+
+	    creatures.GridBug.spawn(utilities.getValidPosition(level));
+	    creatures.Nymph.spawn(utilities.getValidPosition(level));
+	}
+
+	creatures.FaceMonster.spawn(utilities.getValidPosition(level));
     },
 
     // given x,y,z
@@ -299,3 +328,5 @@ var ROT = require("rot");
 var state = require("./state");
 var listeners = require("./listeners");
 var construct = require("./objects/entity_objects");
+var construct = require("./objects/entity_objects");
+var creatures = require("./monsters/entity_creatures");

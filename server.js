@@ -34,36 +34,6 @@ var creatures = require("./monsters/entity_creatures");
 // generate level 1 map
 utilities.generateMapLevel(1);
 
-for(var i=0; i<10; ++i) {
-    var wandpos = utilities.getValidPosition(1);
-    new construct.FreezeWand({
-        id: utilities.genId(),
-        x: wandpos.x,
-        y: wandpos.y,
-        z: 1
-    });
-    wandpos = utilities.getValidPosition(1);
-    new construct.FireballWand({
-        id: utilities.genId(),
-        x: wandpos.x,
-        y: wandpos.y,
-        z: 1
-    });
-    wandpos = utilities.getValidPosition(1);
-    new construct.PortalGun({
-        id: utilities.genId(),
-        x: wandpos.x,
-        y: wandpos.y,
-        z: 1
-    });
-
-    creatures.GridBug.spawn(utilities.getValidPosition(1))
-    creatures.Nymph.spawn(utilities.getValidPosition(1))
-
-}
-
-creatures.FaceMonster.spawn(utilities.getValidPosition(1))
-
 io.sockets.on('connection', function (socket) {
 
     var id = utilities.genId();
