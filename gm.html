@@ -1,0 +1,157 @@
+<html>
+<head>
+<style>
+    #messages p {
+        margin:1;
+    }
+</style>
+</head>
+<body>
+<div id="canvasContainer" style="float:left; border: thick solid black;"></div>
+
+<div id="messages" style="float:left; width: 300px; height: 384px; padding: 5px; background-color: black; color: white; font-family: courier; font-size: 12px; overflow-y: scroll;"></div>
+
+<div style="float:left;">
+<div style="width:500px;">
+<ul>
+<li><b>h,j,k,l</b>: left, down, up, right</li>
+<li><b>i</b>: show inventory</li>
+<li><b>,</b> (comma): pick up items</li>
+<li><b>o</b> <i>[direction]</i>: open door in [direction]</li>
+<li><b>c</b> <i>[direction]</i>: close door in [direction]</li>
+<li><b>d</b> <i>[number]</i>: drop item in slot [number]</li>
+<li><b>s</b> <i>[number] [direction]</i>: shoot item [number] in [direction] (e.g., <b>s2h</b> shoots item in slot 5 to the left)</li>
+<li><b>s</b> <i>[direction]</i>: shoot the first shootable item in your inventory in [direction]</li>
+</ul>
+</div>
+</div>
+<script src="rot.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+ROT.RNG.setSeed(12345);
+ROT.DEFAULT_WIDTH = 83;
+ROT.DEFAULT_HEIGHT = 32;
+
+var id, level = 1;
+var mapData = [];
+var inventory = [];
+var inventoryUp = false;
+var health = 10;
+var entities = [];
+
+entities[1] = {};
+
+var display = new ROT.Display({fontSize:12});
+document.getElementById("canvasContainer").appendChild(display.getContainer());
+
+var socket = io.connect('//' + location.host);
+socket.emit("gm");
+socket.on("map+pos", function(updates) { redraw(updates.map, updates.pos); });
+socket.on("map", function(mapUpdates) { redraw(mapUpdates, {}); });
+socket.on("pos", function(pos) { redraw({}, pos); });
+
+function initMapLevel(level) {
+    mapData[level] = [];
+    for(var i=0; i < ROT.DEFAULT_WIDTH; ++i) {
+        for(var j=0; j < ROT.DEFAULT_HEIGHT; ++j) {
+            if(mapData[level][i] == null) { mapData[level][i] = []; }
+            mapData[level][i][j] = -1;
+        }
+    }
+}
+
+function drawMap(mapUpdates) {
+
+    if(typeof mapData[level] == 'undefined') { initMapLevel(level); }
+
+    // update map state with new data
+    for(i in mapUpdates) {
+        var coords = i.split(',');
+        mapData[level][coords[0]][coords[1]] = mapUpdates[i];
+    }
+
+    // redraw map
+    for(i=0; i < ROT.DEFAULT_WIDTH; ++i) {
+        for(j=0; j < ROT.DEFAULT_HEIGHT; ++j) {
+            drawMapChar(i, j, mapData[level][i][j]==0?".":" ", "#fff", ["#000", "#777"][mapData[level][i][j]]);
+        }
+    }
+}
+
+function updateEntities(posData) {
+    var i;
+    if(posData.clear) { entities[level] = {}; }
+
+    if(posData["add"]) {
+        for(i in posData["add"]) {
+            entities[level][i] = posData["add"][i];
+        }
+    }
+
+    if(posData["remove"]) {
+        for(i=0; i<posData["remove"].length; ++i) {
+            delete entities[level][posData["remove"][i]];
+        }
+    }
+}
+
+function drawEntities() {
+    for(i in entities[level]) {
+        var pos = entities[level][i];
+
+        // if entity is a blocking entity (player, boulder), draw it
+        if(pos.blocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
+        else {
+            // if entity is non-blocking, defer to any blocking entities on the space
+            var hasBlocking = false;
+            for(var j in entities[level]) {
+                if(entities[level][j].blocking && entities[level][j].x == pos.x && entities[level][j].y == pos.y) {
+                    hasBlocking = true;
+                    break;
+                }
+            }
+            if(!hasBlocking) { drawMapChar(pos.x, pos.y, pos.symbol, pos.color); }
+        }
+    }
+}
+
+function redraw(map, posData) {
+
+    if(posData["add"] && posData["add"][id] != undefined) {
+        level = posData["add"][id].z;
+        if(entities[level] == undefined) { entities[level] = {}; }
+    }
+
+    updateEntities(posData);
+
+    drawMap(map);
+    drawEntities();
+}
+
+function drawMapChar(x,y,ch,fg,bg) {
+    if(!inventoryUp || ((x < 2 || x > 36) && (y < 4 || y > 14))) {
+        display.draw(x, y+2, ch, fg, bg);
+    }
+}
+
+function showMessage(m) {
+    var p = document.createElement("p");
+    var messages = document.getElementById("messages");
+    p[(p.innerText == undefined)?"textContent":"innerText"] = m;
+    messages.appendChild(p);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+socket.on("output", function(m) {
+    showMessage(m);
+});
+
+display.getContainer().addEventListener("click", function(e) {
+    var loc = display.eventToPosition(e);
+    socket.emit("monster", { x: loc[0], y: loc[1]-2, name: "GridBug" });
+});
+
+</script>
+</body>
+</html>
