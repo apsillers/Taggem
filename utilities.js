@@ -205,10 +205,18 @@ var utilities = {
     // return a dictionary with "x,y" keys that have the map values of
     // all maps spaces visible to the player with the given id
     filterMapData: function(id, inputMapData) {
-	if(id=="GM") { return inputMapData; }
+        var filteredMapData = {};
+
+	if(id.GM) {
+	    for(var x=0; x < inputMapData[id.level].length; ++x) {
+		for(var y=0; y < inputMapData[id.level][x].length; ++y) {
+		    filteredMapData[x+","+y] = inputMapData[id.level][x][y];
+		}
+	    }
+	    return filteredMapData;
+	}
 
         var you = state.entities[id];
-        var filteredMapData = {};
         
         var fov = new ROT.FOV.PreciseShadowcasting(
             utilities.lightPassesOnLevel(state.entities, you.z));
@@ -223,7 +231,7 @@ var utilities = {
 
     diffMapForPlayer: function(id, mapData) {
 	var level;
-	if(id.GM) { level = id.level; id = id.id; }
+	if(id.GM) { level = id.level; id = id.id; var isGM = true; }
 	else { level = state.entities[id].z; }
 
         var mapDataDiff = {};

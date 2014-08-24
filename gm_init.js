@@ -18,7 +18,6 @@ module.exports = function(socket) {
 	var name = data.name;
 	creatures[name].spawn({ z: gmlevel, x: data.x, y: data.y });
 	listeners.change.emit("change", [gmlevel], ['pos']);
-
     });
 
     function setLevel(data) {
@@ -55,7 +54,7 @@ module.exports = function(socket) {
 						       ));
 	}
         if(types.indexOf('map') != -1) {
-            var mapDiff = utilities.diffMapForPlayer({ GM:true, id:id, level: gmlevel }, utilities.filterMapData("GM", state.mapData));
+            var mapDiff = utilities.diffMapForPlayer({ GM:true, id:id, level: gmlevel }, utilities.filterMapData({ id: id, GM: true, level: gmlevel }, state.mapData));
             socket.emit('map', mapDiff);
         }
 
@@ -65,13 +64,14 @@ module.exports = function(socket) {
     // when leaving, remove the player entity and remove his change listener
     socket.on("disconnect", function() {
         delete state.playerKnowledge[id];
+	listeners.change.removeListener("change", onChange);
+        listeners.output.removeListener("output", outputHandler);
     });
 
     listeners.output.on("output", outputHandler);
     function outputHandler(options) {
         if((options.omitList == undefined || options.omitList.indexOf(id) == -1) &&
-           (options.targets == undefined || options.targets.indexOf(id) != -1) &&
-           (!options.visual || state.entities[id].canSee(options.point)))  {
+           (options.targets == undefined || options.targets.indexOf(id) != -1)) {
             socket.emit("output", options.message);
         }
     }
